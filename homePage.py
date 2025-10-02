@@ -50,34 +50,34 @@ class homePage:
             text="", 
             color1="cyan", color2="violet",
             text_color="white",
-            font=("Minecraft Ten", 20),
+            font="Minecraft Ten", font_size=20,
             command=lambda: self.click_playBtn()
         )
-        variable_playTxt = self.playTxt.create_image(
+        self.variable_playTxt = self.playTxt.create_image(
             self.width//2, self.height//2 + 290,
             "Gallery/PLAY_txt.png",
             110, 40,
             "center"
         )
         
-        self.canvas.tag_bind(variable_playTxt, "<Button-1>", lambda e: self.click_playBtn())
+        self.canvas.tag_bind(self.variable_playTxt, "<Button-1>", lambda e: self.click_playBtn())
         
         def hoverEnter_playtxt(e=None):
             uiComponents.add_shadow(self.playBtn.canvas, self.playBtn.shadow_id, self.playBtn.item_id, self.playBtn.text_id)
-            x, y = self.canvas.coords(variable_playTxt)
-            self.canvas.coords(variable_playTxt, x, y - 2)
+            x, y = self.canvas.coords(self.variable_playTxt)
+            self.canvas.coords(self.variable_playTxt, x, y - 2)
             
         def hoverLeave_playtxt(e=None):
             uiComponents.remove_shadow(self.playBtn.canvas, self.playBtn.shadow_id, self.playBtn.text_id)
-            x, y = self.canvas.coords(variable_playTxt)
-            self.canvas.coords(variable_playTxt, x, y + 2)
+            x, y = self.canvas.coords(self.variable_playTxt)
+            self.canvas.coords(self.variable_playTxt, x, y + 2)
             
-        for tag in (self.playBtn.item_id, self.playBtn.text_id, variable_playTxt):
+        for tag in (self.playBtn.item_id, self.playBtn.text_id, self.variable_playTxt):
             self.canvas.tag_bind(tag, "<Enter>", hoverEnter_playtxt)
             self.canvas.tag_bind(tag, "<Leave>", hoverLeave_playtxt)
         
-        self.canvas.after(200, lambda: self.playBtn.fade.fade_in())
-        self.canvas.after(200, lambda: self.playTxt.fade.fade_in())
+        self.canvas.after(200, lambda: self.playBtn.btn_effect.fade_in())
+        self.canvas.after(200, lambda: self.playTxt.effect.fade_in())
 
     # Vẽ title
     def draw_title(self):
@@ -88,25 +88,37 @@ class homePage:
             400, 250,
             "center"
         )
-        self.canvas.after(200, lambda: self.title_label.fade.fade_in())
+        self.canvas.after(200, lambda: self.title_label.effect.fade_in())
 
     def click_playBtn(self):
-        self.title_label.fade.cancel()
-        self.playBtn.fade.cancel()
-        self.playTxt.fade.cancel()
+        # Tạo hiệu ứng nhấn nút
+        x, y = self.canvas.coords(self.variable_playTxt)
+        self.canvas.coords(self.variable_playTxt, x, y + 2)
+        self.root.after(100, lambda: self.canvas.coords(self.variable_playTxt, x, y))
+
+        # Kết thúc hiệu ứng home page
+        self.title_label.effect.cancel_after()
+        self.playBtn.btn_effect.cancel_after()
+        self.playTxt.effect.cancel_after()
         
-        self.title_label.fade.show_immediately()
-        self.playBtn.fade.show_immediately()
-        self.playTxt.fade.show_immediately()
+        self.title_label.effect.show_immediately()
+        self.playBtn.btn_effect.show_immediately()
+        self.playTxt.effect.show_immediately()
         
-        self.title_label.fade.fade_out()
-        self.playBtn.fade.fade_out()
-        self.playTxt.fade.fade_out()
-        self.homePage_bg.fade.fade_out()
+        self.title_label.effect.fade_out(True)
+        self.playBtn.btn_effect.fade_out(True)
+        self.playTxt.effect.fade_out(True)
+        self.homePage_bg.effect.fade_out(True)
+        
+        self.root.after(700, self.run_chooseAvt)
+            
+    # Vẽ màn hình choose avt
+    def run_chooseAvt(self):
+        self.canvas.destroy()
+        from chooseAvt import chooseAvt
+        chooseAvt(self.root, self.width, self.height)
 
 def runApp():
     root = tk.Tk()
     app = homePage(root)
     root.mainloop()
-
-runApp()
