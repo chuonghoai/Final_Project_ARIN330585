@@ -188,7 +188,7 @@ class ButtonObj:
            font="Minecraft Ten", font_size=30, font_style="bold",
            command=None,
            haveShadow=True,
-           hasBorder=False):   # 👈 thêm tham số mới
+           hasBorder=False):
         self.width = w
         self.height = h
         
@@ -206,12 +206,12 @@ class ButtonObj:
         draw.rounded_rectangle((0, 0, w, h), radius=radius, fill=255)
         round_img.paste(gradient, (0, 0), mask=mask)
 
-        # 👇 Vẽ border nếu cần
+        # Vẽ border nếu cần
         if hasBorder:
             border = Image.new("RGBA", (w, h), (0, 0, 0, 0))
             border_draw = ImageDraw.Draw(border)
             border_draw.rounded_rectangle(
-                (0, 0, w-1, h-1), radius=radius, outline="black", width=1
+                (0, 0, w-1, h-1), radius=radius, outline="black", width=3
             )
             round_img = Image.alpha_composite(round_img, border)
 
@@ -278,16 +278,17 @@ class ComboBoxObj:
         self.selected_value = None
         self.startBtn = None
 
-    def createComboBox(self, x, y, values, w=250, h=60, startBtn=(None, None)):
+    def createComboBox(self, x, y,  values, defultText="Choose Algorithm", font="Minecraft Ten", w=250, h=60, startBtn=(None, None)):
         self.startBtn = startBtn
-        cl = "white"
+        hasbd = True
+        cl1 = "#fdf0d3"
         # Tạo button chính
         btnObj = ButtonObj(self.canvas)
         self.main_btn, self.main_text = btnObj.create_button(
-            x, y, w=w, h=h, text="Chọn thuật toán",
-            color1=cl, color2=cl,
-            text_color="black", font="Arial", font_size=14, font_style="bold",
-            hasBorder=True
+            x, y, w=w, h=h, text=defultText,
+            color1=cl1, color2=cl1,
+            text_color="black", font=font, font_size=18, font_style="bold",
+            hasBorder=hasbd
         )
 
         # Tạo các button option (ẩn ngay dưới button chính)
@@ -296,10 +297,10 @@ class ComboBoxObj:
             option = ButtonObj(self.canvas)
             opt_btn, opt_text = option.create_button(
                 x, y, w=w-20, h=h-10, text=val,
-                color1=cl, color2=cl,
-                text_color="black", font="Arial", font_size=12, font_style="normal",
+                color1=cl1, color2=cl1,
+                text_color="black", font=font, font_size=17, font_style="normal",
                 command=lambda v=val: self._select_value(v),
-                hasBorder=True
+                hasBorder=hasbd
             )
             # Ẩn option (đặt chồng dưới main button)
             self.canvas.itemconfigure(opt_btn, state="hidden")
@@ -316,6 +317,7 @@ class ComboBoxObj:
         else:
             self.open()
 
+    # Xả danh sách con
     def open(self):
         if self.is_open:
             return
@@ -330,6 +332,7 @@ class ComboBoxObj:
             option.btn_effect.slide_up(self.canvas.coords(opt_btn)[0], target_y, easing=0.3, delay=15, hasShadow=True)
             option.text_effect.slide_up(self.canvas.coords(opt_btn)[0], target_y, easing=0.3, delay=15)
 
+    # Đóng danh sách con
     def close(self):
         if not self.is_open:
             return
@@ -345,12 +348,21 @@ class ComboBoxObj:
             self.canvas.itemconfigure(self.startBtn[0], state="normal")
             self.canvas.itemconfigure(self.startBtn[1], state="normal")
 
+    # Gắn text con vào text chính
     def _select_value(self, value):
         self.selected_value = value
-        # đổi text button chính
         self.canvas.itemconfigure(self.main_text, text=value)
-        # đóng danh sách
         self.close()
+        
+    # Lấy text chính trả về chương trình đang chạy
+    def getValue(self):
+        _text = self.canvas.itemcget(self.main_text, "text")
+        if _text == "Choose Algorithm":
+            return None
+        else: 
+            return _text
+    
+
                       
 def create_shadow(w, h, color="gray", radius=35):
     pad = 20

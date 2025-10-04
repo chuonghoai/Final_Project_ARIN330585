@@ -1,6 +1,7 @@
 import tkinter as tk
 from PIL import Image, ImageTk
-from uiComponents import ButtonObj, ImageObj
+from UiComponents import ButtonObj, ImageObj
+from tkinter import font as tkFont
 
 class chooseAvt:
     def __init__(self, root, width=1100, height=700):
@@ -9,6 +10,9 @@ class chooseAvt:
         self.width = width
         self.height = height
         
+        # Nạp font chữ
+        self.font = "Minecraft Ten"
+
         # Kích thước avarta
         self.frameAvtWidth = 270
         self.frameAvtHeight = 270
@@ -154,6 +158,7 @@ class chooseAvt:
         self.hachi_btn.create_button(
             self.width//2 - 270, 140,  # button bên trái
             text="HACHI", text_color="#1a1a1a",
+            font=self.font,
             command=lambda: self.choose("HACHI")
         )
         self.canvas.after(200, lambda: self.hachi_btn.btn_effect.slide_up(self.width//2 - 270, 70//2, hasShadow=True))
@@ -164,6 +169,7 @@ class chooseAvt:
         self.chikawa_btn.create_button(
             self.width//2, 140,  # button giữa
             text="CHIKAWA", text_color="#1a1a1a",
+            font=self.font,
             command=lambda: self.choose("CHIKAWA")
         )
         self.canvas.after(400, lambda: self.chikawa_btn.btn_effect.slide_up(self.width//2, 70//2, hasShadow=True))
@@ -174,6 +180,7 @@ class chooseAvt:
         self.usagi_btn.create_button(
             self.width//2 + 270, 140,  # button bên phải
             text="USAGI", text_color="#1a1a1a",
+            font=self.font,
             command=lambda: self.choose("USAGI")
         )
         self.canvas.after(300, lambda: self.usagi_btn.btn_effect.slide_up(self.width//2 + 270, 70//2, hasShadow=True))
@@ -197,7 +204,7 @@ class chooseAvt:
         self.canvas.after(500, lambda: self.hachi_btn.text_effect.slide_up(self.width//2 - 270, -150))
         
         
-        self.canvas.after(400, lambda: self.title_CHOOSE.effect.slide_up(self.width//2, 170, delay=25))
+        self.canvas.after(390, lambda: self.title_CHOOSE.effect.slide_up(self.width//2, 170, delay=25))
         self.canvas.after(350, lambda: self.title_CHARACTER.effect.slide_up(self.width//2, 170, delay=25))
         
         self.canvas.after(780, self.run_mazePage)
@@ -205,4 +212,4 @@ class chooseAvt:
     def run_mazePage(self):
         self.canvas.destroy()
         from mazePage import mazePage
-        mazePage(self.root, self.width, self.height)
+        mazePage(self.root, self.avtChoosed, self.width, self.height)

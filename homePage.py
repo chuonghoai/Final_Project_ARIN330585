@@ -1,7 +1,8 @@
 import tkinter as tk
-from PIL import Image, ImageTk
-from uiComponents import ButtonObj, ImageObj
-import uiComponents
+import UiComponents
+from UiComponents import ButtonObj, ImageObj
+import tkextrafont
+import pygame
 
 class homePage:
     def __init__(self, root, width=1100, height=700):
@@ -9,6 +10,11 @@ class homePage:
         self.width = width
         self.height = height
         root.title("Maze game")
+        
+        # Nạp font chữ
+        _font = tkextrafont.Font(file="Gallery/MinecraftTen-VGORe.ttf", family="Minecraft Ten")
+        _font = tkextrafont.Font(file="Gallery/Gluten-Bold.otf", family="Gluten Bold")
+        self.font = "Minecraft Ten"
 
         screen_w = root.winfo_screenwidth()
         screen_h = root.winfo_screenheight()
@@ -28,11 +34,40 @@ class homePage:
         # Vẽ nút Play
         self.draw_playBtn()
 
-        #Vẽ title
+        # Vẽ title
         self.draw_title()
+        
+        # Nhạc nền
+        # Phát file1 1 lần
+        pygame.mixer.init()
+        pygame.init()
+
+        pygame.mixer.music.load("Sound/start.wav")
+        pygame.mixer.music.set_volume(1)
+        pygame.mixer.music.play()  # chỉ phát 1 lần
+
+        # Tạo một kênh khác cho nhạc nền loop
+        bg_sound = pygame.mixer.Sound("Sound/background.wav")
+        bg_channel = pygame.mixer.Channel(1)
+        bg_channel.set_volume(0.5)
+
+        def play_start():
+            pygame.mixer.music.load("Sound/start.wav")
+            pygame.mixer.music.set_volume(0.5)
+            pygame.mixer.music.play()
+            check_music_end()
+
+        def check_music_end():
+            if not pygame.mixer.music.get_busy():
+                if not bg_channel.get_busy():
+                    bg_channel.play(bg_sound, loops=-1)
+            else:
+                root.after(100, check_music_end)  # lặp kiểm tra mỗi 200ms
+
+        play_start()
 
     # Vẽ nền background
-    def draw_background(self):
+    def draw_background(self):            
         self.homePage_bg = ImageObj(self.canvas)
         self.homePage_bg.create_image(
             self.width//2, self.height//2,
@@ -50,7 +85,8 @@ class homePage:
             text="", 
             color1="cyan", color2="violet",
             text_color="white",
-            font="Minecraft Ten", font_size=20,
+            # font="Minecraft Ten", font_size=20,
+            font=self.font, font_size=20,
             command=lambda: self.click_playBtn()
         )
         self.variable_playTxt = self.playTxt.create_image(
@@ -63,12 +99,12 @@ class homePage:
         self.canvas.tag_bind(self.variable_playTxt, "<Button-1>", lambda e: self.click_playBtn())
         
         def hoverEnter_playtxt(e=None):
-            uiComponents.add_shadow(self.playBtn.canvas, self.playBtn.shadow_id, self.playBtn.item_id, self.playBtn.text_id)
+            UiComponents.add_shadow(self.playBtn.canvas, self.playBtn.shadow_id, self.playBtn.item_id, self.playBtn.text_id)
             x, y = self.canvas.coords(self.variable_playTxt)
             self.canvas.coords(self.variable_playTxt, x, y - 2)
             
         def hoverLeave_playtxt(e=None):
-            uiComponents.remove_shadow(self.playBtn.canvas, self.playBtn.shadow_id, self.playBtn.text_id)
+            UiComponents.remove_shadow(self.playBtn.canvas, self.playBtn.shadow_id, self.playBtn.text_id)
             x, y = self.canvas.coords(self.variable_playTxt)
             self.canvas.coords(self.variable_playTxt, x, y + 2)
             
