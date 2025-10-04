@@ -1,7 +1,9 @@
+import tkinter as tk
+from tkinter import ttk
 from PIL import Image, ImageDraw, ImageFont, ImageTk, ImageFilter
 
 class effectObj:
-    def __init__(self, canvas, item_id, pil_image):
+    def __init__(self, canvas, item_id, pil_image=None):
         self.canvas = canvas
         if not isinstance(item_id, list):
             item_id = [item_id]
@@ -132,7 +134,6 @@ class effectObj:
             self._running = False
             self._after_id = None
 
-
     def stop(self):
         """Dừng hiệu ứng"""
         if self._after_id:
@@ -182,10 +183,12 @@ class ButtonObj:
         self.delay = delay
         
     def create_button(self, x, y, w=250, h=70, text="Button",
-               color1="#7bdfff", color2="#b46bff",
-               text_color="white", 
-               font="Minecraft Ten", font_size=30,
-               command=None):
+           color1="#7bdfff", color2="#b46bff",
+           text_color="white", 
+           font="Minecraft Ten", font_size=30, font_style="bold",
+           command=None,
+           haveShadow=True,
+           hasBorder=False):   # 👈 thêm tham số mới
         self.width = w
         self.height = h
         
@@ -203,6 +206,15 @@ class ButtonObj:
         draw.rounded_rectangle((0, 0, w, h), radius=radius, fill=255)
         round_img.paste(gradient, (0, 0), mask=mask)
 
+        # 👇 Vẽ border nếu cần
+        if hasBorder:
+            border = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+            border_draw = ImageDraw.Draw(border)
+            border_draw.rounded_rectangle(
+                (0, 0, w-1, h-1), radius=radius, outline="black", width=1
+            )
+            round_img = Image.alpha_composite(round_img, border)
+
         self.original_btn = round_img
 
         if self.delay:
@@ -217,7 +229,11 @@ class ButtonObj:
         self.item_id = self.canvas.create_image(x, y, image=self.tk_img, anchor="center")
 
         # Add text
-        self.text_id = self.canvas.create_text(x, y - 10, text=text, font=(font, font_size), fill=text_color)
+        if font_style:
+            _font = (font, font_size, font_style)
+        else:
+            _font = (font, font_size)
+        self.text_id = self.canvas.create_text(x, y - 10, text=text, font=_font, fill=text_color)
 
         # Shadow
         shadow_img = create_shadow(w, h, radius=radius)
@@ -227,18 +243,17 @@ class ButtonObj:
         self.canvas.itemconfigure(self.shadow_id, state="hidden")
 
         # Hover effect
-        self.canvas.tag_bind(self.item_id, "<Enter>", lambda e: add_shadow(self.canvas, self.shadow_id, self.item_id, self.text_id)) 
-        self.canvas.tag_bind(self.text_id, "<Enter>", lambda e: add_shadow(self.canvas, self.shadow_id, self.item_id, self.text_id)) 
-        self.canvas.tag_bind(self.item_id, "<Leave>", lambda e: remove_shadow(self.canvas, self.shadow_id, self.text_id)) 
-        self.canvas.tag_bind(self.text_id, "<Leave>", lambda e: remove_shadow(self.canvas, self.shadow_id, self.text_id))
+        if haveShadow:
+            self.canvas.tag_bind(self.item_id, "<Enter>", lambda e: add_shadow(self.canvas, self.shadow_id, self.item_id, self.text_id)) 
+            self.canvas.tag_bind(self.text_id, "<Enter>", lambda e: add_shadow(self.canvas, self.shadow_id, self.item_id, self.text_id)) 
+            self.canvas.tag_bind(self.item_id, "<Leave>", lambda e: remove_shadow(self.canvas, self.shadow_id, self.text_id)) 
+            self.canvas.tag_bind(self.text_id, "<Leave>", lambda e: remove_shadow(self.canvas, self.shadow_id, self.text_id))
 
         # Event binding
         if command:
             def action(e=None):
                 command()
                 press_effect()
-            self.canvas.tag_bind(self.item_id, "<Button-1>", lambda e: action())
-            self.canvas.tag_bind(self.text_id, "<Button-1>", lambda e: action())
             self.canvas.tag_bind(self.item_id, "<Button-1>", lambda e: action())
             self.canvas.tag_bind(self.text_id, "<Button-1>", lambda e: action())
         
@@ -253,6 +268,90 @@ class ButtonObj:
         self.text_effect = effectObj(self.canvas, self.text_id, self.original_btn)
         return self.item_id, self.text_id
 
+class ComboBoxObj:
+    def __init__(self, canvas):
+        self.canvas = canvas
+        self.main_btn = None
+        self.main_text = None
+        self.option_buttons = []
+        self.is_open = False
+        self.selected_value = None
+        self.startBtn = None
+
+    def createComboBox(self, x, y, values, w=250, h=60, startBtn=(None, None)):
+        self.startBtn = startBtn
+        cl = "white"
+        # Tạo button chính
+        btnObj = ButtonObj(self.canvas)
+        self.main_btn, self.main_text = btnObj.create_button(
+            x, y, w=w, h=h, text="Chọn thuật toán",
+            color1=cl, color2=cl,
+            text_color="black", font="Arial", font_size=14, font_style="bold",
+            hasBorder=True
+        )
+
+        # Tạo các button option (ẩn ngay dưới button chính)
+        offset = h + 2
+        for i, val in enumerate(values):
+            option = ButtonObj(self.canvas)
+            opt_btn, opt_text = option.create_button(
+                x, y, w=w-20, h=h-10, text=val,
+                color1=cl, color2=cl,
+                text_color="black", font="Arial", font_size=12, font_style="normal",
+                command=lambda v=val: self._select_value(v),
+                hasBorder=True
+            )
+            # Ẩn option (đặt chồng dưới main button)
+            self.canvas.itemconfigure(opt_btn, state="hidden")
+            self.canvas.itemconfigure(opt_text, state="hidden")
+            self.option_buttons.append((option, opt_btn, opt_text, y + (i+1)*offset))
+
+        # Gán sự kiện cho main button
+        self.canvas.tag_bind(self.main_btn, "<Button-1>", lambda e: self.toggle())
+        self.canvas.tag_bind(self.main_text, "<Button-1>", lambda e: self.toggle())
+
+    def toggle(self):
+        if self.is_open:
+            self.close()
+        else:
+            self.open()
+
+    def open(self):
+        if self.is_open:
+            return
+        self.is_open = True
+        if self.startBtn:
+            self.canvas.itemconfigure(self.startBtn[0], state="hidden")
+            self.canvas.itemconfigure(self.startBtn[1], state="hidden")
+
+        for option, opt_btn, opt_text, target_y in self.option_buttons:
+            self.canvas.itemconfigure(opt_btn, state="normal")
+            self.canvas.itemconfigure(opt_text, state="normal")
+            option.btn_effect.slide_up(self.canvas.coords(opt_btn)[0], target_y, easing=0.3, delay=15, hasShadow=True)
+            option.text_effect.slide_up(self.canvas.coords(opt_btn)[0], target_y, easing=0.3, delay=15)
+
+    def close(self):
+        if not self.is_open:
+            return
+        self.is_open = False
+        main_x, main_y = self.canvas.coords(self.main_btn)
+        for option, opt_btn, opt_text, _ in self.option_buttons:
+            option.btn_effect.slide_up(main_x, main_y, easing=0.3, delay=15, hasShadow=True)
+            option.text_effect.slide_up(main_x, main_y, easing=0.3, delay=15)
+            self.canvas.itemconfigure(opt_btn, state="hidden"),
+            self.canvas.itemconfigure(opt_text, state="hidden")
+        
+        if self.startBtn:
+            self.canvas.itemconfigure(self.startBtn[0], state="normal")
+            self.canvas.itemconfigure(self.startBtn[1], state="normal")
+
+    def _select_value(self, value):
+        self.selected_value = value
+        # đổi text button chính
+        self.canvas.itemconfigure(self.main_text, text=value)
+        # đóng danh sách
+        self.close()
+                      
 def create_shadow(w, h, color="gray", radius=35):
     pad = 20
     big_w, big_h = w + pad * 2, h + pad * 2

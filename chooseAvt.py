@@ -199,3 +199,10 @@ class chooseAvt:
         
         self.canvas.after(400, lambda: self.title_CHOOSE.effect.slide_up(self.width//2, 170, delay=25))
         self.canvas.after(350, lambda: self.title_CHARACTER.effect.slide_up(self.width//2, 170, delay=25))
+        
+        self.canvas.after(780, self.run_mazePage)
+        
+    def run_mazePage(self):
+        self.canvas.destroy()
+        from mazePage import mazePage
+        mazePage(self.root, self.width, self.height)
