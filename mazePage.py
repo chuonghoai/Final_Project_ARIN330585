@@ -116,7 +116,7 @@ class mazePage:
             self.canvas.itemconfigure(self.bg_warning_id, state="normal")
             self.canvas.tag_raise(self.bg_warning_id)
 
-            self.warning_after = self.root.after(10000, lambda: self.canvas.itemconfigure(self.bg_warning_id, state="hidden"))
+            self.warning_after = self.root.after(3000, lambda: self.canvas.itemconfigure(self.bg_warning_id, state="hidden"))
             self.root.after(50, lambda: self.root.bind("<Button-1>", self.hideWarning))
         
     def hideWarning(self, e=None):
@@ -134,4 +134,4 @@ def runApp():
     app = mazePage(root, "USAGI")
     root.mainloop()
     
-# runApp()
+runApp()

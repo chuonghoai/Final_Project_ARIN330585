@@ -149,7 +149,6 @@ class ImageObj:
         self.tk_img = None
         self.original = None  # giữ PIL image gốc
         self.delay = delay
-        self._r = None
 
     def create_image(self, x, y, path, w=None, h=None, anchor="center"):
         img = Image.open(path).convert("RGBA")
@@ -164,7 +163,6 @@ class ImageObj:
             _ = img.copy()
             
         self.tk_img = ImageTk.PhotoImage(_)
-        self._r = self.tk_img
         self.canvas.image_refs.append(self.tk_img)
         self.item_id = self.canvas.create_image(x, y, image=self.tk_img, anchor=anchor)
         
@@ -191,10 +189,6 @@ class ButtonObj:
            command=None,
            haveShadow=True,
            hasBorder=False):
-        
-        # Tọa độ ban đầu
-        self.origin_x = x
-        self.origin_y = y
         
         # size
         self.width = w
