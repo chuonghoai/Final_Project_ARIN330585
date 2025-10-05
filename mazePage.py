@@ -15,7 +15,7 @@ class mazePage:
         self.avtChoosed = avtChoosed
         
         # Thuật toán đã chọn từ combo box
-        self.algorithmChoosed = ""
+        self.algorithmChoosed = None
         
         # Nạp font chữ
         self.fontMinecraft = "Minecraft Ten"
@@ -38,22 +38,32 @@ class mazePage:
         # Thêm nút back
         self.draw_back()
         
-    # Vẽ background thay đổi liên tục
+    # Vẽ background
     def draw_background(self):
         avtPath = ""
+        avtWarning = ""
         if self.avtChoosed == "HACHI":
             avtPath = "Gallery/HachiBackground.png"
         elif self.avtChoosed == "CHIKAWA":
             avtPath = "Gallery/ChikawaBackground.png"
         elif self.avtChoosed == "USAGI":
             avtPath = "Gallery/UsagiBackground.png"
+        avtWarning = "Gallery/warning.png"
             
-        self.chikawa_bg = ImageObj(self.canvas)
-        self.bg_id = self.chikawa_bg.create_image(
+        self.bg_img = ImageObj(self.canvas)
+        self.bg_img_id = self.bg_img.create_image(
             self.width//2, self.height//2,
             avtPath,
             w=self.width, h=self.height
         )
+        
+        self.bg_warning = ImageObj(self.canvas)
+        self.bg_warning_id = self.bg_warning.create_image(
+            self.width//2, self.height//2,
+            avtWarning,
+            w=self.width, h=self.height
+        )
+        self.canvas.itemconfigure(self.bg_warning_id, state="hidden")
         
     # Vẽ nút start: 
     def draw_startbtn(self):
@@ -103,8 +113,25 @@ class mazePage:
             print(f"Bạn đã chọn thuật toán {self.algorithmChoosed}")
         else:
             print("Hãy chọn thuật toán trước bạn nhé")
+            self.canvas.itemconfigure(self.bg_warning_id, state="normal")
+            self.canvas.tag_raise(self.bg_warning_id)
+
+            self.warning_after = self.root.after(10000, lambda: self.canvas.itemconfigure(self.bg_warning_id, state="hidden"))
+            self.root.after(50, lambda: self.root.bind("<Button-1>", self.hideWarning))
+        
+    def hideWarning(self, e=None):
+        """Ẩn warning ngay khi click"""
+        self.canvas.itemconfigure(self.bg_warning_id, state="hidden")
+
+        # Hủy after nếu còn tồn tại
+        if hasattr(self, "warning_after"):
+            self.root.after_cancel(self.warning_after)
+            del self.warning_after
+        self.root.unbind("<Button-1>")
             
 def runApp():
     root = tk.Tk()
-    app = mazePage(root, "HACHI")
+    app = mazePage(root, "USAGI")
     root.mainloop()
+    
+# runApp()

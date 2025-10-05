@@ -38,7 +38,7 @@ class homePage:
         self.draw_title()
         
         # Nhạc nền
-        # Phát file1 1 lần
+            # Sound bắt đầu
         pygame.mixer.init()
         pygame.init()
 
@@ -46,12 +46,12 @@ class homePage:
         pygame.mixer.music.set_volume(1)
         pygame.mixer.music.play()  # chỉ phát 1 lần
 
-        # Tạo một kênh khác cho nhạc nền loop
+            # Sound loop liên tục
         bg_sound = pygame.mixer.Sound("Sound/background.wav")
         bg_channel = pygame.mixer.Channel(1)
-        bg_channel.set_volume(0.5)
+        bg_channel.set_volume(0.2)
 
-        def play_start():
+        def play_sound_start():
             pygame.mixer.music.load("Sound/start.wav")
             pygame.mixer.music.set_volume(0.5)
             pygame.mixer.music.play()
@@ -62,9 +62,8 @@ class homePage:
                 if not bg_channel.get_busy():
                     bg_channel.play(bg_sound, loops=-1)
             else:
-                root.after(100, check_music_end)  # lặp kiểm tra mỗi 200ms
-
-        play_start()
+                root.after(50, check_music_end)  # lặp kiểm tra mỗi 200ms
+        play_sound_start()
 
     # Vẽ nền background
     def draw_background(self):            

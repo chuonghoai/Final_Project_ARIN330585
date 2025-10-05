@@ -199,15 +199,15 @@ class chooseAvt:
         self.canvas.after(300, lambda: self.usagi_btn.btn_effect.slide_up(self.width//2 + 270, -150, hasShadow=True))
         self.canvas.after(300, lambda: self.usagi_btn.text_effect.slide_up(self.width//2 + 270, -150))
         self.canvas.after(400, lambda: self.chikawa_btn.btn_effect.slide_up(self.width//2, -150, hasShadow=True))
+        
         self.canvas.after(400, lambda: self.chikawa_btn.text_effect.slide_up(self.width//2, -150))
         self.canvas.after(500, lambda: self.hachi_btn.btn_effect.slide_up(self.width//2 - 270, -150, hasShadow=True))
         self.canvas.after(500, lambda: self.hachi_btn.text_effect.slide_up(self.width//2 - 270, -150))
         
+        self.canvas.after(360, lambda: self.title_CHOOSE.effect.slide_up(self.width//2, 170, delay=25))
+        self.canvas.after(320, lambda: self.title_CHARACTER.effect.slide_up(self.width//2, 170, delay=25))
         
-        self.canvas.after(390, lambda: self.title_CHOOSE.effect.slide_up(self.width//2, 170, delay=25))
-        self.canvas.after(350, lambda: self.title_CHARACTER.effect.slide_up(self.width//2, 170, delay=25))
-        
-        self.canvas.after(780, self.run_mazePage)
+        self.canvas.after(700, self.run_mazePage)
         
     def run_mazePage(self):
         self.canvas.destroy()
