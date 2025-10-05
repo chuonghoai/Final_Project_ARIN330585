@@ -91,8 +91,7 @@ class homePage:
         self.variable_playTxt = self.playTxt.create_image(
             self.width//2, self.height//2 + 290,
             "Gallery/PLAY_txt.png",
-            110, 40,
-            "center"
+            110, 40
         )
         
         self.canvas.tag_bind(self.variable_playTxt, "<Button-1>", lambda e: self.click_playBtn())
@@ -120,8 +119,7 @@ class homePage:
         self.title_label.create_image(
             self.width//2, 150,
             "./Gallery/title.png",
-            400, 250,
-            "center"
+            400, 250
         )
         self.canvas.after(200, lambda: self.title_label.effect.fade_in())
 

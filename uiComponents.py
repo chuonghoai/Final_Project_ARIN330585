@@ -150,7 +150,7 @@ class ImageObj:
         self.original = None  # giữ PIL image gốc
         self.delay = delay
 
-    def create_image(self, x, y, path, w=None, h=None, anchor="center"):
+    def create_image(self, x, y, path, w=None, h=None, anchor="center", hasEffect=True):
         img = Image.open(path).convert("RGBA")
         if w and h:
             img = img.resize((w, h), Image.LANCZOS)
@@ -166,7 +166,8 @@ class ImageObj:
         self.canvas.image_refs.append(self.tk_img)
         self.item_id = self.canvas.create_image(x, y, image=self.tk_img, anchor=anchor)
         
-        self.effect = effectObj(self.canvas, self.item_id, self.original)
+        if hasEffect:
+            self.effect = effectObj(self.canvas, self.item_id, self.original)
         return self.item_id
 
 class ButtonObj:

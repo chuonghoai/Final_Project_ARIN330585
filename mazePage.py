@@ -128,10 +128,3 @@ class mazePage:
             self.root.after_cancel(self.warning_after)
             del self.warning_after
         self.root.unbind("<Button-1>")
-            
-def runApp():
-    root = tk.Tk()
-    app = mazePage(root, "USAGI")
-    root.mainloop()
-    
-runApp()
