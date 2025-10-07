@@ -608,7 +608,8 @@ class mazeObj:
         draw_step(0)
 
     # Vẽ đường đi của nhân vật
-    def draw_path(self, path_coords, sizeOfBlock=(40, 40), color="#50E671", alpha=100, delay=16, command=None):
+    def draw_path(self, path_coords, sizeOfBlock=(40, 40), color="#50E671", 
+                  alpha=100, delay=16, command=None, cells_per_frame=5):
         """
         Vẽ đường đi từ từ theo thứ tự path_coords (hiệu ứng 60 FPS).
         path_coords: danh sách [(i, j)] tọa độ đường đi.
@@ -672,10 +673,13 @@ class mazeObj:
                 return
 
             # Vẽ ô tiếp theo
-            i, j = path_coords[index]
-            x1, y1 = j * w, i * h
-            x2, y2 = x1 + w, y1 + h
-            draw.rectangle([x1, y1, x2, y2], fill=fill_color)
+            for k in range(cells_per_frame):
+                if index + k >= len(path_coords):
+                    break
+                i, j = path_coords[index]
+                x1, y1 = j * w, i * h
+                x2, y2 = x1 + w, y1 + h
+                draw.rectangle([x1, y1, x2, y2], fill=fill_color)
 
             # Cập nhật lại ảnh trên canvas
             self.path_img = ImageTk.PhotoImage(overlay)
