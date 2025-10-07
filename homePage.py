@@ -12,8 +12,8 @@ class homePage:
         root.title("Maze game")
         
         # Nạp font chữ
-        _font = tkextrafont.Font(file="Gallery/MinecraftTen-VGORe.ttf", family="Minecraft Ten")
-        _font = tkextrafont.Font(file="Gallery/Gluten-Bold.otf", family="Gluten Bold")
+        _font = tkextrafont.Font(file="font/MinecraftTen-VGORe.ttf", family="Minecraft Ten")
+        _font = tkextrafont.Font(file="font/Gluten-Bold.otf", family="Gluten Bold")
         self.font = "Minecraft Ten"
 
         screen_w = root.winfo_screenwidth()

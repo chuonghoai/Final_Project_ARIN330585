@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from PIL import Image, ImageDraw, ImageFont, ImageTk, ImageFilter
+import time
 
 class effectObj:
     def __init__(self, canvas, item_id, pil_image=None):
@@ -141,6 +142,16 @@ class effectObj:
             self._after_id = None
         self._running = False
 
+class textObj:
+    def __init__(self, canvas):
+        self.canvas = canvas
+        self.item_id = None
+        
+    def create_text(self, x, y, text="", font="Minecraft Ten", 
+                    font_size=20, font_style="bold", text_color="white", anchor="center"):
+        _font = (font, font_size, font_style)
+        self.item_id = self.canvas.create_text(x, y, text=text, font=_font, fill=text_color, anchor=anchor)
+        return self.item_id
 
 class ImageObj:
     def __init__(self, canvas, delay=False):
@@ -168,6 +179,29 @@ class ImageObj:
         
         if hasEffect:
             self.effect = effectObj(self.canvas, self.item_id, self.original)
+        return self.item_id
+    
+    def create_gif(self, x, y, path, w=None, h=None, anchor="center", delay=100):
+        gif = Image.open(path)
+        frames = []
+        try:
+            while True:
+                frame = gif.copy().convert("RGBA")
+                if w and h:
+                    frame = frame.resize((w, h), Image.LANCZOS)
+                frames.append(ImageTk.PhotoImage(frame))
+                gif.seek(gif.tell() + 1)
+        except EOFError:
+            pass
+
+        self.item_id = self.canvas.create_image(x, y, image=frames[0], anchor=anchor)
+        self.canvas.image_refs.extend(frames)
+        
+        def animate(index=0):
+            self.canvas.itemconfig(self.item_id, image=frames[index])
+            self.canvas.after(delay, animate, (index + 1) % len(frames))
+
+        animate()
         return self.item_id
 
 class ButtonObj:
@@ -236,7 +270,7 @@ class ButtonObj:
             _font = (font, font_size, font_style)
         else:
             _font = (font, font_size)
-        self.text_id = self.canvas.create_text(x, y - 10, text=text, font=_font, fill=text_color)
+        self.text_id = self.canvas.create_text(x, y - h*1/7, text=text, font=_font, fill=text_color, anchor="center")
 
         # Shadow
         shadow_img = create_shadow(w, h, radius=radius)
@@ -365,8 +399,361 @@ class ComboBoxObj:
         else: 
             return _text
     
+class mazeObj:
+    def __init__(self, canvas, animating, _after_id):
+        self.canvas = canvas
+        self.pathWall = "Gallery/mazeImg/wall.png"
+        self.pathFloor = "Gallery/mazeImg/floor.png"
+        self.pathTreasure = "Gallery/mazeImg/cachua.png"
+        self.pathEnd = "Gallery/mazeImg/door.png"
 
-                      
+        self.blocks = []       # lưu các item id của mê cung
+        self.avatar_id = None  # lưu item id của nhân vật
+        self.end_id = None     # lưu item id lối thoát
+        self.border_id = None  # lưu item id khung viền
+        self.treasure_id = []  # lưu item id các kho báu
+        
+        self.start_pos = None  # (i, j) vị trí 'A'
+        self.end_pos = None    # (i, j) vị trí 'B'
+        self.treasure_pos = [] # [(i, j)] vị trí treasure
+        self.center_pos = None # vị trí trung tâm của mê cung
+
+        self.maze = None        # Lưu lại mê cung
+        self.animating = animating  # Lưu lại trạng thái hoạt ảnh
+        self._after_id = _after_id     # Lưu lại hàng đợi after
+        self.is_reach_goal = False      # kiểm tra đã đến đích chưa
+
+    def createMaze(self, x, y, maze, 
+                   pathAvt=None, pathWall=None, pathFloor=None, pathTreasure=None, pathEnd=None,
+                   sizeOfBlock=(40, 40),
+                   bd_color="gray", bd_width=3):
+
+        # Đặt giá trị mặc định cho các biến
+        pathWall = pathWall or self.pathWall
+        pathFloor = pathFloor or self.pathFloor
+        pathTreasure = pathTreasure or self.pathTreasure
+        pathEnd = pathEnd or self.pathEnd
+        self.center_pos = (x, y)
+
+        self.maze = maze
+        rows, cols = len(maze), len(maze[0])
+        w, h = sizeOfBlock
+
+        # Tính toạ độ góc trên trái để mê cung có tâm tại (x, y)
+        start_x = x - (cols * w) / 2
+        start_y = y - (rows * h) / 2
+
+        # Load ảnh và lưu lại để tránh bị GC
+        self.wall_img = ImageTk.PhotoImage(Image.open(pathWall).resize(sizeOfBlock))
+        self.floor_img = ImageTk.PhotoImage(Image.open(pathFloor).resize(sizeOfBlock))
+        self.avt_img = ImageTk.PhotoImage(Image.open(pathAvt).resize(sizeOfBlock))
+        self.treasure_img = ImageTk.PhotoImage(Image.open(pathTreasure).resize(sizeOfBlock))
+        self.end_img = ImageTk.PhotoImage(Image.open(pathEnd).resize(sizeOfBlock))
+
+        # Xóa block và border cũ nếu có
+        for b in self.blocks:
+            self.canvas.delete(b)
+        self.blocks.clear()
+
+        # Xóa vị trí kho báu cũ
+        for t in self.treasure_id:
+            self.canvas.delete(t)
+        self.treasure_id.clear()
+        self.treasure_pos.clear()
+
+        # Xóa nhân vật, đích và khung
+        if self.avatar_id:
+            self.canvas.delete(self.avatar_id)
+            self.avatar_id = None
+        if self.end_id:
+            self.canvas.delete(self.end_id)
+            self.end_id = None
+        if self.border_id:
+            self.canvas.delete(self.border_id)
+            self.border_id = None
+
+        self.start_pos = None
+        self.end_pos = None
+
+        # --- Vẽ mê cung ---
+        for i in range(rows):
+            for j in range(cols):
+                cx = start_x + j * w
+                cy = start_y + i * h
+                cell = maze[i][j]
+
+                if cell == "*":  # Tường
+                    img_id = self.canvas.create_image(cx, cy, anchor="nw", image=self.wall_img)
+                else:  # Đường đi hoặc A, B
+                    img_id = self.canvas.create_image(cx, cy, anchor="nw", image=self.floor_img)
+
+                    if cell == "A":
+                        self.start_pos = (i, j)
+                    elif cell == "B":
+                        self.end_pos = (i, j)
+                    elif cell == "t":
+                        self.treasure_pos.append((i, j))
+
+                self.blocks.append(img_id)
+
+        # --- Vẽ nhân vật tại vị trí A ---
+        if self.start_pos:
+            i, j = self.start_pos
+            cx = start_x + j * w
+            cy = start_y + i * h
+            self.avatar_id = self.canvas.create_image(cx, cy, anchor="nw", image=self.avt_img)
+        
+        # --- Vẽ lối thoát tại vị trí B ---
+        if self.end_pos:
+            i, j = self.end_pos
+            cx = start_x + j * w
+            cy = start_y + i * h
+            self.end_id = self.canvas.create_image(cx, cy, anchor="nw", image=self.end_img)
+        
+        # --- Vẽ kho báu tại vị trí t ---
+        self.treasure_map = {}
+        if self.treasure_pos:
+            for i, j in self.treasure_pos:
+                cx = start_x + j * w
+                cy = start_y + i * h
+                tid = self.canvas.create_image(cx, cy, anchor="nw", image=self.treasure_img)
+                self.treasure_id.append(tid)
+                self.treasure_map[(i, j)] = tid
+            
+        # --- Vẽ khung viền quanh mê cung ---
+        x1, y1 = start_x, start_y
+        x2, y2 = start_x + cols * w, start_y + rows * h
+        self.border_id = self.canvas.create_rectangle(
+            x1, y1, x2, y2,
+            outline=bd_color,
+            width=bd_width
+        )
+
+    # Vẽ quá trình tìm kiếm của thuật toán
+    def draw_search_process(self, explored_cells, path_coords,
+                            sizeOfBlock=(40, 40),
+                            color="#28549A", alpha=100,
+                            delay=16, cells_per_frame=5):
+        """
+        Hiển thị quá trình BFS mở rộng (60 FPS) bằng overlay RGBA (trong suốt thật),
+        sau đó tự động vẽ đường đi.
+        cells_per_frame: số ô vẽ trong mỗi frame (tăng giá trị → nhanh hơn).
+        """
+        self.animating = True
+        self.is_reach_goal = False
+        
+        if not explored_cells or not self.maze:
+            self.draw_path(path_coords, sizeOfBlock=sizeOfBlock)
+            return
+
+        rows, cols = len(self.maze), len(self.maze[0])
+        w, h = sizeOfBlock
+
+        # Gốc mê cung
+        x, y = self.center_pos
+        start_x = x - (cols * w) / 2
+        start_y = y - (rows * h) / 2
+
+        # Chuẩn bị ảnh overlay RGBA
+        overlay = Image.new("RGBA", (int(cols * w), int(rows * h)), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(overlay)
+
+        # Màu + alpha
+        r = int(color[1:3], 16)
+        g = int(color[3:5], 16)
+        b = int(color[5:7], 16)
+        fill_color = (r, g, b, alpha)
+
+        # Ảnh ban đầu
+        self.search_img = ImageTk.PhotoImage(overlay)
+        self.search_id = self.canvas.create_image(start_x, start_y, anchor="nw", image=self.search_img)
+        self.canvas.image_refs = getattr(self.canvas, "image_refs", [])
+        self.canvas.image_refs.append(self.search_img)
+
+        # Hiệu ứng từng bước
+        def draw_step(index=0):
+            if not self.animating:
+                return
+            if index >= len(explored_cells):
+                self.animating = False
+                self.draw_path(path_coords, sizeOfBlock=sizeOfBlock)
+                return
+
+            # Vẽ nhiều ô mỗi frame
+            for k in range(cells_per_frame):
+                if index + k >= len(explored_cells):
+                    break
+                i, j = explored_cells[index + k]
+                x1, y1 = j * w, i * h
+                x2, y2 = x1 + w, y1 + h
+                draw.rectangle([x1, y1, x2, y2], fill=fill_color)
+
+            # Cập nhật ảnh
+            self.search_img = ImageTk.PhotoImage(overlay)
+            self.canvas.itemconfig(self.search_id, image=self.search_img)
+            self.canvas.image_refs.append(self.search_img)
+
+            # Đảm bảo thứ tự lớp
+            if self.treasure_id:
+                for t in self.treasure_id:
+                    self.canvas.tag_raise(t)
+            if self.end_id:
+                self.canvas.tag_raise(self.end_id)
+            if self.avatar_id:
+                self.canvas.tag_raise(self.avatar_id)
+
+            after_id = self.canvas.after(delay, draw_step, index + cells_per_frame)
+            self._after_id.append(after_id)
+
+        draw_step(0)
+
+    # Vẽ đường đi của nhân vật
+    def draw_path(self, path_coords, sizeOfBlock=(40, 40), color="#50E671", alpha=100, delay=16, command=None):
+        """
+        Vẽ đường đi từ từ theo thứ tự path_coords (hiệu ứng 60 FPS).
+        path_coords: danh sách [(i, j)] tọa độ đường đi.
+        sizeOfBlock: kích thước mỗi ô.
+        color: màu đường đi (hex).
+        alpha: độ trong suốt (0–255).
+        delay: thời gian giữa mỗi frame (ms) — 16ms ≈ 60 FPS.
+        """
+        self.animating = True
+        
+        if not path_coords or not self.maze:
+            return
+
+        rows, cols = len(self.maze), len(self.maze[0])
+        w, h = sizeOfBlock
+
+        # Gốc mê cung
+        x, y = self.center_pos
+        start_x = x - (cols * w) / 2
+        start_y = y - (rows * h) / 2
+
+        # Chuẩn bị ảnh overlay rỗng (RGBA)
+        overlay = Image.new("RGBA", (int(cols * w), int(rows * h)), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(overlay)
+
+        # Chuyển màu hex → RGB + alpha
+        r = int(color[1:3], 16)
+        g = int(color[3:5], 16)
+        b = int(color[5:7], 16)
+        fill_color = (r, g, b, alpha)
+
+        # ảnh ban đầu
+        self.path_img = ImageTk.PhotoImage(overlay)
+        self.path_id = self.canvas.create_image(start_x, start_y, anchor="nw", image=self.path_img)
+        self.canvas.image_refs = getattr(self.canvas, "image_refs", [])
+        self.canvas.image_refs.append(self.path_img)
+
+        if self.treasure_id:
+            for t in self.treasure_id:
+                self.canvas.tag_raise(t)
+        if self.end_id:
+            self.canvas.tag_raise(self.end_id)
+        if self.avatar_id:
+            self.canvas.tag_raise(self.avatar_id)
+
+        # --- Hiệu ứng vẽ từng ô ---
+        def draw_step(index=0):
+            if index >= len(path_coords):
+                self.animating = False
+                # Khi vẽ xong toàn bộ, đảm bảo thứ tự hiển thị
+                if self.avatar_id:
+                    self.canvas.tag_raise(self.avatar_id)
+                if self.end_id:
+                    self.canvas.tag_raise(self.end_id)
+                if self.treasure_id:
+                    for t in self.treasure_id:
+                        self.canvas.tag_raise(t)
+
+                # Hàm thực thi khi vẽ xong path
+                self.animate_avatar_along_path(path_coords)
+                return
+
+            # Vẽ ô tiếp theo
+            i, j = path_coords[index]
+            x1, y1 = j * w, i * h
+            x2, y2 = x1 + w, y1 + h
+            draw.rectangle([x1, y1, x2, y2], fill=fill_color)
+
+            # Cập nhật lại ảnh trên canvas
+            self.path_img = ImageTk.PhotoImage(overlay)
+            self.canvas.itemconfig(self.path_id, image=self.path_img)
+            self.canvas.image_refs.append(self.path_img)
+
+            # Lên frame tiếp theo (60 FPS)
+            after_id = self.canvas.after(delay, draw_step, index + 1)
+            self._after_id.append(after_id)
+        draw_step(0)
+
+    # Cho nhân vật di chuyển
+    def animate_avatar_along_path(self, path_coords, sizeOfBlock=(40, 40), speed=6, delay=16):
+        """
+        Di chuyển nhân vật mượt mà theo path_coords.
+        speed: số pixel di chuyển mỗi frame
+        delay: thời gian giữa mỗi frame (ms) ~16ms tương đương ~60fps
+        """
+        self.animating = True
+        
+        if not path_coords or not hasattr(self, 'avatar_id'):
+            return
+
+        w, h = sizeOfBlock
+        rows, cols = len(self.maze), len(self.maze[0])
+        cx, cy = self.center_pos
+
+        start_x = cx - (cols * w) / 2
+        start_y = cy - (rows * h) / 2
+
+        # Vị trí ban đầu (giữa ô)
+        cur_x = start_x + path_coords[0][1] * w + w / 2
+        cur_y = start_y + path_coords[0][0] * h + h / 2
+        self.canvas.coords(self.avatar_id, cur_x, cur_y)
+        self.canvas.tag_raise(self.avatar_id)
+
+        def move_between(p1, p2, on_done):
+            (i1, j1), (i2, j2) = p1, p2
+            x1, y1 = start_x + j1 * w, start_y + i1 * h
+            x2, y2 = start_x + j2 * w, start_y + i2 * h
+
+            dx, dy = x2 - x1, y2 - y1
+            dist = (dx ** 2 + dy ** 2) ** 0.5
+            steps = max(int(dist // speed), 1)
+            ux, uy = dx / steps, dy / steps
+
+            def step(k=0):
+                if k >= steps:
+                    # tới ô kế → xử lý kho báu
+                    self.canvas.coords(self.avatar_id, x2, y2)
+                    self.canvas.tag_raise(self.avatar_id)
+                    if (i2, j2) in self.treasure_map:
+                        tid = self.treasure_map.pop((i2, j2))
+                        self.canvas.delete(tid)
+                    if on_done:
+                        on_done()
+                    return
+
+                nx = x1 + ux * k
+                ny = y1 + uy * k
+                self.canvas.coords(self.avatar_id, nx, ny)
+                self.canvas.tag_raise(self.avatar_id)
+                self.canvas.after(delay, step, k + 1)
+            step(0)
+
+        def move_next(index=0):
+            if index >= len(path_coords) - 1:
+                self.animating = False
+                self.is_reach_goal = True
+                return
+            move_between(
+                path_coords[index],
+                path_coords[index + 1],
+                lambda: move_next(index + 1)
+            )
+        move_next(0)
+        
+# function create shadơw            
 def create_shadow(w, h, color="gray", radius=35):
     pad = 20
     big_w, big_h = w + pad * 2, h + pad * 2
