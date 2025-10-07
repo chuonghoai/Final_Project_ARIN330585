@@ -609,7 +609,7 @@ class mazeObj:
 
     # Vẽ đường đi của nhân vật
     def draw_path(self, path_coords, sizeOfBlock=(40, 40), color="#50E671", 
-                  alpha=100, delay=16, command=None, cells_per_frame=5):
+                  alpha=100, delay=16, command=None, cells_per_frame=10):
         """
         Vẽ đường đi từ từ theo thứ tự path_coords (hiệu ứng 60 FPS).
         path_coords: danh sách [(i, j)] tọa độ đường đi.
