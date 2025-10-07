@@ -101,6 +101,13 @@ class mazePage:
             ]
         ]
         
+        self.goal_gif_click_id = None
+        self.goal_gif_after = None
+        self.text1_click_id = None
+        self.text1_after = None
+        self.text2_click_id = None
+        self.text2_after = None
+        
         # Vẽ mê cung
         self.maze = mazeObj(self.canvas, self.animating, self._after_ids)
         self.mazeIndex = 0
@@ -150,7 +157,7 @@ class mazePage:
         self.text2 = textObj(self.canvas)
         self.text1.create_text(
             self.width//2, 80,
-            text="Chúc mừng bạn đã đến đích",
+            text="Chúc mừng bạn đã đến đích",   
             font=self.fontGluten, font_size=50, font_style="normal",
             text_color="#262a30"
         )
@@ -160,32 +167,34 @@ class mazePage:
             font=self.fontGluten, font_size=50, font_style="normal",
             text_color="#262a30"
         )
-
+        
         # Hàm xóa gif nếu click chuột vào màn hình
         def hide_gif(e=None):
+            # Xóa gif
             if hasattr(self, "goal_gif"):
                 self.canvas.delete(self.goal_gif.item_id)
                 del self.goal_gif
-            if hasattr(self, "text1"):
-                self.canvas.delete(self.text1.item_id)
-                del self.text1
-            if hasattr(self, "text2"):
-                self.canvas.delete(self.text2.item_id)
-                del self.text2
             if hasattr(self, "goal_gif_after"):
                 self.root.after_cancel(self.goal_gif_after)
                 del self.goal_gif_after
-            self.root.unbind("<Button-1>", self.goal_gif_click_id)
-            self.root.unbind("<Button-1>", self.text1_click_id)
-            self.root.unbind("<Button-1>", self.text2_click_id)
 
+            # Xóa text
+            for attr in ["text1", "text2"]:
+                if hasattr(self, attr):
+                    self.canvas.delete(getattr(self, attr).item_id)
+                    delattr(self, attr)
+            for attr in ["text1_after", "text2_after"]:
+                if hasattr(self, attr):
+                    self.root.after_cancel(getattr(self, attr))
+                    delattr(self, attr)
+
+        # Bind 1 lần cho cả màn hình
         self.goal_gif_click_id = self.root.bind("<Button-1>", hide_gif)
-        self.text1_click_id = self.root.bind("<Button-1>", hide_gif)
-        self.text2_click_id = self.root.bind("<Button-1>", hide_gif)
-        self.goal_gif_after = self.root.after(8000, hide_gif)
-        self.text1_after = self.root.after(8000, hide_gif)
-        self.text2_after = self.root.after(8000, hide_gif)
-
+        # Tự động xóa sau 4s
+        self.goal_gif_after = self.root.after(4000, hide_gif)
+        self.text1_after = self.root.after(4000, hide_gif)
+        self.text2_after = self.root.after(4000, hide_gif)
+        
     # Vẽ nút start: 
     def draw_startbtn(self):
         self.startBtn = ButtonObj(self.canvas)
@@ -260,7 +269,8 @@ class mazePage:
                         self.draw_congratulation_reachGoal(collected, total_treasure)
                         self.enableStartBtn = True
                     else:
-                        self.root.after(100, check_reach_goal)
+                        after_id = self.root.after(100, check_reach_goal)
+                        self._after_ids.append(after_id)
                 check_reach_goal()
         else:
             print("Hãy chọn thuật toán trước bạn nhé")
@@ -321,3 +331,7 @@ class mazePage:
             row = line.strip().split()
             processed.append(row)
         return processed
+
+root = tk.Tk()
+app = mazePage(root, "USAGI")
+root.mainloop()
