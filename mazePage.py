@@ -12,6 +12,9 @@ class mazePage:
         self.width = width
         self.height = height
 
+        # Kiểm soát nút start
+        self.enableStartBtn = True
+
         # Avarta đã chọn từ trang trước
         self.avtChoosed = avtChoosed
         
@@ -65,7 +68,7 @@ class mazePage:
             [
                 "*  *   *   *   *   *   *   *   *   *   *   *   *   *   *   *   *",
                 "*  .   *   .   .   .   .   .   .   .   .   .   *   .   .   .   *",
-                "*  t   *   *   *   .   *   *   *   *   *   .   *   .   *   *   *",
+                "*  .   *   *   *   .   *   *   *   *   *   .   *   .   *   *   *",
                 "*  .   .   .   .   .   *   .   *   .   .   .   *   .   .   .   *",
                 "*  *   *   *   *   *   *   .   *   .   *   *   *   .   *   .   *",
                 "*  .   .   .   .   .   *   .   *   .   .   .   *   .   *   .   *",
@@ -76,7 +79,7 @@ class mazePage:
                 "*  .   *   .   *   .   *   .   *   .   *   *   *   .   *   .   *",
                 "*  .   *   .   *   .   *   .   *   .   .   .   *   .   *   .   *",
                 "*  .   *   .   *   *   *   .   *   *   *   .   *   .   *   .   *",
-                "*  .   *   .   .   .   .   .   .   .   *   .   .   .   .   .   *",
+                "*  .   *   .   .   .   .   .   .   .   *   .   .   .   .   t   *",
                 "*  *   *   *   *   *   *   *   *   *   *   *   *   *   *   *   *"
             ],
             [
@@ -237,23 +240,28 @@ class mazePage:
             self.root.unbind("<Button-1>")
             
         self.algorithmChoosed = self.algorithmCbb.getValue()
+        
         if self.algorithmChoosed:
-            maze = self.processMazeStructure(self.mazeArr[self.mazeIndex])
-            path, collected, total_treasure, explored_order = algorithm.chooseAlgorithm(self.algorithmChoosed, maze)
-
-            print(f"Bạn đã chọn thuật toán {self.algorithmChoosed}")
-            print(path)
-            print(collected)
-            print(total_treasure)
-            print(explored_order)
-            self.maze.draw_search_process(explored_order, path)
-            def check_reach_goal():
+            if (self.enableStartBtn and not self.maze.is_reach_goal) or self.maze.is_reach_goal:
                 if self.maze.is_reach_goal:
-                    self.draw_congratulation_reachGoal(collected, total_treasure)
-                else:
-                    self.root.after(100, check_reach_goal)
-            check_reach_goal()
-            
+                    self.draw_maze(self.mazeArr[self.mazeIndex])
+                self.enableStartBtn = False
+                maze = self.processMazeStructure(self.mazeArr[self.mazeIndex])
+                path, collected, total_treasure, explored_order = algorithm.chooseAlgorithm(self.algorithmChoosed, maze)
+
+                print(f"Bạn đã chọn thuật toán {self.algorithmChoosed}")
+                print(path)
+                print(collected)
+                print(total_treasure)
+                print(explored_order)
+                self.maze.draw_search_process(explored_order, path)
+                def check_reach_goal():
+                    if self.maze.is_reach_goal:
+                        self.draw_congratulation_reachGoal(collected, total_treasure)
+                        self.enableStartBtn = True
+                    else:
+                        self.root.after(100, check_reach_goal)
+                check_reach_goal()
         else:
             print("Hãy chọn thuật toán trước bạn nhé")
             self.canvas.itemconfigure(self.bg_warning_id, state="normal")
@@ -265,6 +273,7 @@ class mazePage:
     # Hàm thay đổi mê cung (nút reset)
     def draw_reset(self):
         def resetMaze():
+            self.enableStartBtn = True
             # Hủy toàn bộ hoạt ảnh đang chạy
             if hasattr(self, "_after_ids"):
                 for aid in self._after_ids:

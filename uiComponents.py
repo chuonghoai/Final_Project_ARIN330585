@@ -742,7 +742,8 @@ class mazeObj:
                 ny = y1 + uy * k
                 self.canvas.coords(self.avatar_id, nx, ny)
                 self.canvas.tag_raise(self.avatar_id)
-                self.canvas.after(delay, step, k + 1)
+                after_id = self.canvas.after(delay, step, k + 1)
+                self._after_id.append(after_id)
             step(0)
 
         def move_next(index=0):
