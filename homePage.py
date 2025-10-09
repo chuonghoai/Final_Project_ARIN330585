@@ -49,11 +49,11 @@ class homePage:
             # Sound loop liên tục
         bg_sound = pygame.mixer.Sound("Sound/background.wav")
         bg_channel = pygame.mixer.Channel(1)
-        bg_channel.set_volume(0.2)
+        bg_channel.set_volume(1)
 
         def play_sound_start():
             pygame.mixer.music.load("Sound/start.wav")
-            pygame.mixer.music.set_volume(0.5)
+            pygame.mixer.music.set_volume(1)
             pygame.mixer.music.play()
             check_music_end()
 
