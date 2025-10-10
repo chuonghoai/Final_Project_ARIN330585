@@ -89,7 +89,6 @@ class effectObj:
 
     # Slide up effect
     def slide_up(self, target_x, target_y, easing=0.2, delay=30, hasShadow=False):
-        """Bắt đầu hiệu ứng slide up"""
         self.target_x = target_x
         self.target_y = target_y
         self.easing = easing
@@ -99,7 +98,6 @@ class effectObj:
 
         if self._after_id:
             self.canvas.after_cancel(self._after_id)
-
         self._animate_slide()
 
     def _animate_slide(self):
@@ -203,6 +201,11 @@ class ImageObj:
 
         animate()
         return self.item_id
+
+    def load_image(self, path, w, h):
+        from PIL import Image, ImageTk
+        img = Image.open(path).resize((w, h))
+        return ImageTk.PhotoImage(img)
 
 class ButtonObj:
     def __init__(self, canvas, delay=False):
@@ -315,11 +318,29 @@ class ComboBoxObj:
         self.selected_value = None
         self.startBtn = None
 
-    def createComboBox(self, x, y,  values, defultText="Choose Algorithm", font="Minecraft Ten", w=250, h=60, startBtn=(None, None)):
+        # Phân trang + cấu hình
+        self.page_index = 0
+        self.pages = []
+        self.arrowLeft = None
+        self.arrowRight = None
+        self.arrow_imgs = {}   # [PATCH] thêm để lưu ảnh hover
+        self._cfg = {
+            "w": 250, "h": 60, "font": "Minecraft Ten",
+            "hasbd": True, "cl1": "#fdf0d3"
+        }
+
+    def createComboBox(self, x, y, values, defultText="Choose Algorithm",
+                       font="Minecraft Ten", w=250, h=60, startBtn=(None, None)):
         self.startBtn = startBtn
         hasbd = True
         cl1 = "#fdf0d3"
-        # Tạo button chính
+        self._cfg.update({"w": w, "h": h, "font": font, "hasbd": hasbd, "cl1": cl1})
+
+        # ==== Chia values thành các trang 5 phần tử ====
+        self.pages = [values[i:i+5] for i in range(0, len(values), 5)]
+        self.page_index = 0
+
+        # ==== Nút chính ====
         btnObj = ButtonObj(self.canvas)
         self.main_btn, self.main_text = btnObj.create_button(
             x, y, w=w, h=h, text=defultText,
@@ -328,7 +349,85 @@ class ComboBoxObj:
             hasBorder=hasbd
         )
 
-        # Tạo các button option (ẩn ngay dưới button chính)
+        # ==== Tải sẵn hình mũi tên và hover ====
+        img_obj = ImageObj(self.canvas)
+        self.arrow_imgs = {
+            "left": img_obj.load_image("Gallery/arrowLeft.png", w=50, h=40),
+            "left_hover": img_obj.load_image("Gallery/arrowLeftHover.png", w=50, h=40),
+            "right": img_obj.load_image("Gallery/arrowRight.png", w=50, h=40),
+            "right_hover": img_obj.load_image("Gallery/arrowRightHover.png", w=50, h=40),
+        }
+
+        # ==== Vẽ mũi tên ====
+        self.arrowLeft = self.canvas.create_image(x - w//2 - 20, y, image=self.arrow_imgs["left"])
+        self.arrowRight = self.canvas.create_image(x + w//2 + 20, y, image=self.arrow_imgs["right"])
+
+        # ==== Nếu chỉ 1 trang → ẩn 2 nút ====
+        if len(self.pages) <= 1:
+            self.canvas.itemconfigure(self.arrowLeft, state="hidden")
+            self.canvas.itemconfigure(self.arrowRight, state="hidden")
+        else:
+            # Gắn sự kiện click
+            self.canvas.tag_bind(self.arrowLeft, "<Button-1>", lambda e: self.prev_page())
+            self.canvas.tag_bind(self.arrowRight, "<Button-1>", lambda e: self.next_page())
+            # Gắn hover
+            self._bind_arrow_hover()
+
+        # ==== Option đầu ====
+        self._create_option_buttons(self.pages[self.page_index])
+        self.canvas.tag_bind(self.main_btn, "<Button-1>", lambda e: self.toggle())
+        self.canvas.tag_bind(self.main_text, "<Button-1>", lambda e: self.toggle())
+
+        # Cập nhật trạng thái mũi tên ban đầu
+        self._update_arrow_state()
+
+    # ===== Hover cho mũi tên =====
+    def _bind_arrow_hover(self):
+        # Hover left
+        self.canvas.tag_bind(self.arrowLeft, "<Enter>", lambda e: self._arrow_hover("left", True))
+        self.canvas.tag_bind(self.arrowLeft, "<Leave>", lambda e: self._arrow_hover("left", False))
+        # Hover right
+        self.canvas.tag_bind(self.arrowRight, "<Enter>", lambda e: self._arrow_hover("right", True))
+        self.canvas.tag_bind(self.arrowRight, "<Leave>", lambda e: self._arrow_hover("right", False))
+
+    def _arrow_hover(self, side, entering):
+        """Thay đổi ảnh khi di chuột"""
+        # Không kích hoạt hover nếu đang ở trang đầu/cuối
+        if (side == "left" and self.page_index == 0) or (
+            side == "right" and self.page_index == len(self.pages) - 1
+        ):
+            return
+
+        if side == "left":
+            img = self.arrow_imgs["left_hover" if entering else "left"]
+            self.canvas.itemconfigure(self.arrowLeft, image=img)
+        else:
+            img = self.arrow_imgs["right_hover" if entering else "right"]
+            self.canvas.itemconfigure(self.arrowRight, image=img)
+
+    def _update_arrow_state(self):
+        """Ẩn hoặc hiện hover theo page hiện tại"""
+        # Vô hiệu hóa hover ở trang đầu/cuối bằng cách đặt ảnh chuẩn
+        if self.page_index == 0:
+            self.canvas.itemconfigure(self.arrowLeft, image=self.arrow_imgs["left"])
+        if self.page_index == len(self.pages) - 1:
+            self.canvas.itemconfigure(self.arrowRight, image=self.arrow_imgs["right"])
+
+
+    # [PATCH] tiện ích lấy tâm main button
+    def _main_center(self):
+        # Tùy ButtonObj vẽ gì: nếu là image/oval/line, coords có thể khác.
+        # Ở code gốc bạn đã dùng trực tiếp (x, y), nên giả định coords trả về (x, y).
+        x, y = self.canvas.coords(self.main_btn)
+        return x, y
+
+    # [PATCH] tạo option theo trang hiện tại (ẩn sẵn)
+    def _create_option_buttons(self, values):
+        self.option_buttons.clear()
+        x, y = self._main_center()
+        w = self._cfg["w"]; h = self._cfg["h"]
+        cl1 = self._cfg["cl1"]; font = self._cfg["font"]; hasbd = self._cfg["hasbd"]
+
         offset = h + 2
         for i, val in enumerate(values):
             option = ButtonObj(self.canvas)
@@ -339,22 +438,63 @@ class ComboBoxObj:
                 command=lambda v=val: self._select_value(v),
                 hasBorder=hasbd
             )
-            # Ẩn option (đặt chồng dưới main button)
             self.canvas.itemconfigure(opt_btn, state="hidden")
             self.canvas.itemconfigure(opt_text, state="hidden")
             self.option_buttons.append((option, opt_btn, opt_text, y + (i+1)*offset))
 
-        # Gán sự kiện cho main button
-        self.canvas.tag_bind(self.main_btn, "<Button-1>", lambda e: self.toggle())
-        self.canvas.tag_bind(self.main_text, "<Button-1>", lambda e: self.toggle())
+    # [PATCH] show ngay option của trang hiện tại (không đụng self.is_open)
+    def _reveal_current_page(self, animate=True):
+        for option, opt_btn, opt_text, target_y in self.option_buttons:
+            self.canvas.itemconfigure(opt_btn, state="normal")
+            self.canvas.itemconfigure(opt_text, state="normal")
+            if animate:
+                option.btn_effect.slide_up(self.canvas.coords(opt_btn)[0], target_y, easing=0.3, delay=15, hasShadow=True)
+                option.text_effect.slide_up(self.canvas.coords(opt_btn)[0], target_y, easing=0.3, delay=15)
+            else:
+                # Không animation: đặt luôn y đích (nếu cần)
+                cx, _cy = self.canvas.coords(opt_btn)
+                # nếu ButtonObj dùng group, có thể cần move; giả sử slide_up là hiệu ứng chính nên bỏ qua nhánh này
+                pass
 
+    # [PATCH] rebuild trang hiện tại, nếu đang mở thì reveal ngay
+    def _refresh_options(self):
+        # Xóa option cũ
+        for _, opt_btn, opt_text, _ in self.option_buttons:
+            self.canvas.delete(opt_btn)
+            self.canvas.delete(opt_text)
+        self.option_buttons.clear()
+
+        # Tạo option mới cho trang hiện tại
+        self._create_option_buttons(self.pages[self.page_index])
+
+        # Nếu đang mở, show ngay trang mới (không gọi open() để tránh early-return)
+        if self.is_open:
+            # startBtn phải tiếp tục ẩn khi đang mở
+            if self.startBtn:
+                self.canvas.itemconfigure(self.startBtn[0], state="hidden")
+                self.canvas.itemconfigure(self.startBtn[1], state="hidden")
+            self._reveal_current_page(animate=True)
+
+    # ===== Pagination =====
+    def next_page(self):
+        if self.page_index < len(self.pages) - 1:
+            self.page_index += 1
+            self._refresh_options()
+            self._update_arrow_state()
+
+    def prev_page(self):
+        if self.page_index > 0:
+            self.page_index -= 1
+            self._refresh_options()
+            self._update_arrow_state()
+
+    # ===== Toggle/Open/Close =====
     def toggle(self):
         if self.is_open:
             self.close()
         else:
             self.open()
 
-    # Xả danh sách con
     def open(self):
         if self.is_open:
             return
@@ -362,42 +502,32 @@ class ComboBoxObj:
         if self.startBtn:
             self.canvas.itemconfigure(self.startBtn[0], state="hidden")
             self.canvas.itemconfigure(self.startBtn[1], state="hidden")
+        # Hiện trang hiện tại
+        self._reveal_current_page(animate=True)
 
-        for option, opt_btn, opt_text, target_y in self.option_buttons:
-            self.canvas.itemconfigure(opt_btn, state="normal")
-            self.canvas.itemconfigure(opt_text, state="normal")
-            option.btn_effect.slide_up(self.canvas.coords(opt_btn)[0], target_y, easing=0.3, delay=15, hasShadow=True)
-            option.text_effect.slide_up(self.canvas.coords(opt_btn)[0], target_y, easing=0.3, delay=15)
-
-    # Đóng danh sách con
     def close(self):
         if not self.is_open:
             return
         self.is_open = False
-        main_x, main_y = self.canvas.coords(self.main_btn)
+        main_x, main_y = self._main_center()
         for option, opt_btn, opt_text, _ in self.option_buttons:
             option.btn_effect.slide_up(main_x, main_y, easing=0.3, delay=15, hasShadow=True)
             option.text_effect.slide_up(main_x, main_y, easing=0.3, delay=15)
-            self.canvas.itemconfigure(opt_btn, state="hidden"),
+            self.canvas.itemconfigure(opt_btn, state="hidden")
             self.canvas.itemconfigure(opt_text, state="hidden")
-        
         if self.startBtn:
             self.canvas.itemconfigure(self.startBtn[0], state="normal")
             self.canvas.itemconfigure(self.startBtn[1], state="normal")
 
-    # Gắn text con vào text chính
     def _select_value(self, value):
         self.selected_value = value
         self.canvas.itemconfigure(self.main_text, text=value)
         self.close()
-        
-    # Lấy text chính trả về chương trình đang chạy
+
     def getValue(self):
         _text = self.canvas.itemcget(self.main_text, "text")
-        if _text == "Choose Algorithm":
-            return None
-        else: 
-            return _text
+        return None if _text == "Choose Algorithm" else _text
+
     
 class mazeObj:
     def __init__(self, canvas, animating, _after_id):
@@ -533,12 +663,8 @@ class mazeObj:
     def draw_search_process(self, explored_cells, path_coords,
                             sizeOfBlock=(40, 40),
                             color="#28549A", alpha=100,
-                            delay=16, cells_per_frame=5):
-        """
-        Hiển thị quá trình BFS mở rộng (60 FPS) bằng overlay RGBA (trong suốt thật),
-        sau đó tự động vẽ đường đi.
-        cells_per_frame: số ô vẽ trong mỗi frame (tăng giá trị → nhanh hơn).
-        """
+                            delay=16, cells_per_frame=5,
+                            onFinish=None):
         self.animating = True
         self.is_reach_goal = False
         
@@ -577,6 +703,8 @@ class mazeObj:
             if index >= len(explored_cells):
                 self.animating = False
                 self.draw_path(path_coords, sizeOfBlock=sizeOfBlock)
+                if onFinish:
+                    onFinish()
                 return
 
             # Vẽ nhiều ô mỗi frame
@@ -610,14 +738,6 @@ class mazeObj:
     # Vẽ đường đi của nhân vật
     def draw_path(self, path_coords, sizeOfBlock=(40, 40), color="#50E671", 
                   alpha=100, delay=16, command=None, cells_per_frame=10):
-        """
-        Vẽ đường đi từ từ theo thứ tự path_coords (hiệu ứng 60 FPS).
-        path_coords: danh sách [(i, j)] tọa độ đường đi.
-        sizeOfBlock: kích thước mỗi ô.
-        color: màu đường đi (hex).
-        alpha: độ trong suốt (0–255).
-        delay: thời gian giữa mỗi frame (ms) — 16ms ≈ 60 FPS.
-        """
         self.animating = True
         
         if not path_coords or not self.maze:
@@ -693,11 +813,6 @@ class mazeObj:
 
     # Cho nhân vật di chuyển
     def animate_avatar_along_path(self, path_coords, sizeOfBlock=(40, 40), speed=6, delay=16):
-        """
-        Di chuyển nhân vật mượt mà theo path_coords.
-        speed: số pixel di chuyển mỗi frame
-        delay: thời gian giữa mỗi frame (ms) ~16ms tương đương ~60fps
-        """
         self.animating = True
         
         if not path_coords or not hasattr(self, 'avatar_id'):
@@ -758,6 +873,56 @@ class mazeObj:
             )
         move_next(0)
         
+class TimerObj:
+    def __init__(self, canvas):
+        self.canvas = canvas
+        self.text_id = None     # ID của text trên canvas
+        self.running = False
+        self.start_time = 0
+        self.after_id = None
+        self.elapsed = 0.0      # thời gian đã trôi qua
+
+    def draw(self, x, y, font=("Consolas", 18, "bold"), color="#222", prefix="⏱"):
+        """Vẽ bộ đếm tại vị trí (x, y) và bắt đầu đếm"""
+        # Nếu đã có text cũ → xóa đi
+        if self.text_id:
+            self.canvas.delete(self.text_id)
+
+        # Tạo text ban đầu
+        self.text_id = self.canvas.create_text(x, y, text=f"{prefix} 0.00 s",
+                                               font=font, fill=color, anchor="center")
+        self.start_time = time.perf_counter()
+        self.running = True
+        self._update(prefix)
+
+    def _update(self, prefix):
+        """Cập nhật text mỗi frame"""
+        if not self.running:
+            return
+
+        # Tính thời gian trôi
+        self.elapsed = time.perf_counter() - self.start_time
+        self.canvas.itemconfigure(self.text_id, text=f"{prefix} {self.elapsed:.2f} s")
+
+        # Cập nhật mỗi 100ms (0.1s)
+        self.after_id = self.canvas.after(100, self._update, prefix)
+
+    def stop(self):
+        """Dừng timer"""
+        if not self.running:
+            return
+        self.running = False
+        if self.after_id:
+            self.canvas.after_cancel(self.after_id)
+            self.after_id = None
+
+    def reset(self):
+        """Reset timer về 0"""
+        self.stop()
+        if self.text_id:
+            self.canvas.itemconfigure(self.text_id, text="⏱ 0.00 s")
+        self.elapsed = 0.0
+
 # function create shadơw            
 def create_shadow(w, h, color="gray", radius=35):
     pad = 20
