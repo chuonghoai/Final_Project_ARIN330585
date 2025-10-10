@@ -4,7 +4,8 @@ from collections import deque
 def chooseAlgorithm(name, maze):
     if name == "BFS":
         return bfs_collect_treasures(maze)
-
+    if name == "Greedy":
+        return greedy_best_first_search(maze)
 # 1. BFS
 from collections import deque
 
@@ -65,3 +66,89 @@ def bfs_collect_treasures(maze):
 
     collected = bin(best_mask).count("1")
     return best_path, collected, total_treasures, explored_order
+
+#-------------------
+from heapq import heappush, heappop
+
+def greedy_best_first_search(maze):
+    rows, cols = len(maze), len(maze[0])
+
+    # --- Tìm vị trí A, B và các kho báu ---
+    start = end = None
+    treasures = []
+    for r in range(rows):
+        for c in range(cols):
+            if maze[r][c] == "A":
+                start = (r, c)
+            elif maze[r][c] == "B":
+                end = (r, c)
+            elif maze[r][c] == "t":
+                treasures.append((r, c))
+
+    if not start or not end:
+        return None, 0, 0, []
+
+    def heuristic(a, b):
+        """Khoảng cách Manhattan"""
+        return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+    def greedy_path(start, goal):
+        """Tìm đường Greedy từ start → goal"""
+        pq = []  # hàng đợi ưu tiên theo heuristic
+        heappush(pq, (heuristic(start, goal), start))
+        came_from = {start: None}
+        visited = set()
+        explored = []
+
+        while pq:
+            _, current = heappop(pq)
+            explored.append(current)
+
+            if current == goal:
+                # Truy vết đường đi
+                path = []
+                while current:
+                    path.append(current)
+                    current = came_from[current]
+                return path[::-1], explored
+
+            visited.add(current)
+            r, c = current
+            for dr, dc in [(1,0), (-1,0), (0,1), (0,-1)]:
+                nr, nc = r + dr, c + dc
+                neighbor = (nr, nc)
+                if (
+                    0 <= nr < rows and 0 <= nc < cols and
+                    maze[nr][nc] != "*" and neighbor not in visited
+                ):
+                    if neighbor not in came_from:
+                        came_from[neighbor] = current
+                        heappush(pq, (heuristic(neighbor, goal), neighbor))
+
+        return [], explored  # không tìm thấy
+
+    # --- Tìm kho báu tuần tự ---
+    full_path = []
+    explored_order = []
+    current = start
+    collected = 0
+    total_treasures = len(treasures)
+
+    while treasures:
+        # tìm kho báu gần nhất theo heuristic
+        treasures.sort(key=lambda t: heuristic(current, t))
+        next_treasure = treasures.pop(0)
+        path, explored = greedy_path(current, next_treasure)
+        if not path:
+            break  # không tìm thấy
+        full_path += path[1:]  # bỏ ô đầu trùng
+        explored_order += explored
+        current = next_treasure
+        collected += 1
+
+    # sau khi lấy hết kho báu, đi tới đích B
+    path_to_end, explored = greedy_path(current, end)
+    full_path += path_to_end[1:]
+    explored_order += explored
+
+    return full_path, collected, total_treasures, explored_order

@@ -1,8 +1,9 @@
 import tkinter as tk
 from PIL import Image, ImageTk
-from UiComponents import ButtonObj, ImageObj, ComboBoxObj, mazeObj, textObj
+from UiComponents import ButtonObj, ImageObj, ComboBoxObj, mazeObj, textObj, TimerObj
 import tkextrafont
 import algorithm
+import time
 
 class mazePage:
     def __init__(self, root, avtChoosed, width=1100, height=700):
@@ -33,6 +34,9 @@ class mazePage:
         # Hàng đợi của các hoạt ảnh hiệu ứng
         self.animating = False
         self._after_ids = []
+        
+        # Vẽ bộ đếm thời gian        
+        self.timer = TimerObj(self.canvas)
         
         # Vẽ background
         self.draw_background()
@@ -208,10 +212,10 @@ class mazePage:
         
     # Vẽ combo box chọn thuật toán
     def draw_cbbox(self):
-        values = ["BFS", "DFS", "IDL", "IDS", "UCS"]
+        values = ["BFS", "DFS", "IDL", "IDS", "UCS", "Greedy"]
         self.algorithmCbb = ComboBoxObj(self.canvas)
         self.algorithmCbb.createComboBox(
-            self.width - 200, self.height//2 - 200,
+            self.width - 185, self.height//2 - 200,
             values=values, 
             font=self.fontGluten,
             w = 270,
@@ -256,14 +260,22 @@ class mazePage:
                     self.draw_maze(self.mazeArr[self.mazeIndex])
                 self.enableStartBtn = False
                 maze = self.processMazeStructure(self.mazeArr[self.mazeIndex])
-                path, collected, total_treasure, explored_order = algorithm.chooseAlgorithm(self.algorithmChoosed, maze)
+                
+                # Vẽ bộ đếm thời gian
+                self.timer.draw(280, 50)
 
+                # Bắt đầu chạy và tính thời gian thuật toán
+                path, collected, total_treasure, explored_order = algorithm.chooseAlgorithm(self.algorithmChoosed, maze)
+                
                 print(f"Bạn đã chọn thuật toán {self.algorithmChoosed}")
-                print(path)
-                print(collected)
-                print(total_treasure)
-                print(explored_order)
-                self.maze.draw_search_process(explored_order, path)
+                if path is None:
+                    print("Không tìm được đường đi")
+                    return
+                
+                def onProcessDone():
+                    self.timer.stop()
+
+                self.maze.draw_search_process(explored_order, path, onFinish=onProcessDone)
                 def check_reach_goal():
                     if self.maze.is_reach_goal:
                         self.draw_congratulation_reachGoal(collected, total_treasure)
@@ -284,6 +296,7 @@ class mazePage:
     def draw_reset(self):
         def resetMaze():
             self.enableStartBtn = True
+            self.timer.reset()
             # Hủy toàn bộ hoạt ảnh đang chạy
             if hasattr(self, "_after_ids"):
                 for aid in self._after_ids:
@@ -331,3 +344,7 @@ class mazePage:
             row = line.strip().split()
             processed.append(row)
         return processed
+    
+root = tk.Tk()
+app = mazePage(root, "USAGI")
+root.mainloop()
