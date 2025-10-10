@@ -344,7 +344,3 @@ class mazePage:
             row = line.strip().split()
             processed.append(row)
         return processed
-    
-root = tk.Tk()
-app = mazePage(root, "USAGI")
-root.mainloop()
