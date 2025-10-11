@@ -1,6 +1,6 @@
 import tkinter as tk
 from PIL import Image, ImageTk
-from UiComponents import ButtonObj, ImageObj
+from UiComponents import ButtonObj, ImageObj, AudioControl
 from tkinter import font as tkFont
 
 class chooseAvt:
@@ -96,11 +96,15 @@ class chooseAvt:
         self.draw_Chikawa_avt()
         self.draw_Usagi_avt()
         
-        # # Vẽ 3 nút chọn avarta
+        # Vẽ 3 nút chọn avarta
         self.draw_Hachi_btn()
         self.draw_Chikawa_btn()
         self.draw_Usagi_btn()
         
+        # Vẽ nút âm thanh
+        self.audio = AudioControl(self.canvas_CHOOSE, x=50, y=10)
+        self.audio.bring_to_front()
+                
     # Vẽ nền trắng và tiêu đề
     def draw_bgAndtitle(self):
         self.title_CHOOSE = ImageObj(self.canvas_CHOOSE)

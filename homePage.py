@@ -1,6 +1,6 @@
 import tkinter as tk
 import UiComponents
-from UiComponents import ButtonObj, ImageObj
+from UiComponents import ButtonObj, ImageObj, AudioControl
 import tkextrafont
 import pygame
 
@@ -37,33 +37,8 @@ class homePage:
         # Vẽ title
         self.draw_title()
         
-        # Nhạc nền
-            # Sound bắt đầu
-        pygame.mixer.init()
-        pygame.init()
-
-        pygame.mixer.music.load("Sound/start.wav")
-        pygame.mixer.music.set_volume(1)
-        pygame.mixer.music.play()  # chỉ phát 1 lần
-
-            # Sound loop liên tục
-        bg_sound = pygame.mixer.Sound("Sound/background.wav")
-        bg_channel = pygame.mixer.Channel(1)
-        bg_channel.set_volume(1)
-
-        def play_sound_start():
-            pygame.mixer.music.load("Sound/start.wav")
-            pygame.mixer.music.set_volume(1)
-            pygame.mixer.music.play()
-            check_music_end()
-
-        def check_music_end():
-            if not pygame.mixer.music.get_busy():
-                if not bg_channel.get_busy():
-                    bg_channel.play(bg_sound, loops=-1)
-            else:
-                root.after(50, check_music_end)  # lặp kiểm tra mỗi 200ms
-        play_sound_start()
+        # Vẽ nút âm thanh
+        self.audio = AudioControl(self.canvas, x=50, y=40)
 
     # Vẽ nền background
     def draw_background(self):            
@@ -155,3 +130,6 @@ def runApp():
     root = tk.Tk()
     app = homePage(root)
     root.mainloop()
+
+if __name__=="__main__":
+    runApp()
