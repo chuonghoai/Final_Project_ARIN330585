@@ -1,7 +1,8 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, PhotoImage
 from PIL import Image, ImageDraw, ImageFont, ImageTk, ImageFilter
 import time
+import pygame
 
 class effectObj:
     def __init__(self, canvas, item_id, pil_image=None):
@@ -317,6 +318,7 @@ class ComboBoxObj:
         self.is_open = False
         self.selected_value = None
         self.startBtn = None
+        self.onSelect = None
 
         # Phân trang + cấu hình
         self.page_index = 0
@@ -330,8 +332,10 @@ class ComboBoxObj:
         }
 
     def createComboBox(self, x, y, values, defultText="Choose Algorithm",
-                       font="Minecraft Ten", w=250, h=60, startBtn=(None, None)):
+                       font="Minecraft Ten", w=250, h=60, startBtn=(None, None),
+                       onSelect=None):
         self.startBtn = startBtn
+        self.onSelect = onSelect
         hasbd = True
         cl1 = "#fdf0d3"
         self._cfg.update({"w": w, "h": h, "font": font, "hasbd": hasbd, "cl1": cl1})
@@ -523,6 +527,8 @@ class ComboBoxObj:
         self.selected_value = value
         self.canvas.itemconfigure(self.main_text, text=value)
         self.close()
+        if self.onSelect:
+            self.onSelect(value)
 
     def getValue(self):
         _text = self.canvas.itemcget(self.main_text, "text")
@@ -658,7 +664,7 @@ class mazeObj:
             outline=bd_color,
             width=bd_width
         )
-
+    
     # Vẽ quá trình tìm kiếm của thuật toán
     def draw_search_process(self, explored_cells, path_coords,
                             sizeOfBlock=(40, 40),
@@ -667,7 +673,7 @@ class mazeObj:
                             onFinish=None):
         self.animating = True
         self.is_reach_goal = False
-        
+
         if not explored_cells or not self.maze:
             self.draw_path(path_coords, sizeOfBlock=sizeOfBlock)
             return
@@ -675,20 +681,20 @@ class mazeObj:
         rows, cols = len(self.maze), len(self.maze[0])
         w, h = sizeOfBlock
 
-        # Gốc mê cung
+        # Tính vị trí bắt đầu
         x, y = self.center_pos
         start_x = x - (cols * w) / 2
         start_y = y - (rows * h) / 2
 
-        # Chuẩn bị ảnh overlay RGBA
+        # Ảnh overlay trong suốt
         overlay = Image.new("RGBA", (int(cols * w), int(rows * h)), (0, 0, 0, 0))
         draw = ImageDraw.Draw(overlay)
 
-        # Màu + alpha
-        r = int(color[1:3], 16)
-        g = int(color[3:5], 16)
-        b = int(color[5:7], 16)
-        fill_color = (r, g, b, alpha)
+        # Màu + alpha cơ bản
+        base_color = tuple(int(color[i:i+2], 16) for i in (1, 3, 5))
+
+        # Bộ đếm số lần ô được vẽ (để tăng độ đậm khi quay lại)
+        visit_count = {}
 
         # Ảnh ban đầu
         self.search_img = ImageTk.PhotoImage(overlay)
@@ -696,7 +702,7 @@ class mazeObj:
         self.canvas.image_refs = getattr(self.canvas, "image_refs", [])
         self.canvas.image_refs.append(self.search_img)
 
-        # Hiệu ứng từng bước
+        # --- Animation từng frame ---
         def draw_step(index=0):
             if not self.animating:
                 return
@@ -712,6 +718,14 @@ class mazeObj:
                 if index + k >= len(explored_cells):
                     break
                 i, j = explored_cells[index + k]
+
+                # Đếm số lần đã tô để tăng alpha (đè màu)
+                visit_count[(i, j)] = visit_count.get((i, j), 0) + 1
+                times = visit_count[(i, j)]
+                extra_alpha = min(255, alpha + times * 40)  # quay đầu nhiều → đậm hơn
+                fill_color = (*base_color, extra_alpha)
+
+                # Vẽ đè lên vị trí cũ
                 x1, y1 = j * w, i * h
                 x2, y2 = x1 + w, y1 + h
                 draw.rectangle([x1, y1, x2, y2], fill=fill_color)
@@ -721,7 +735,7 @@ class mazeObj:
             self.canvas.itemconfig(self.search_id, image=self.search_img)
             self.canvas.image_refs.append(self.search_img)
 
-            # Đảm bảo thứ tự lớp
+            # Giữ layer đúng thứ tự
             if self.treasure_id:
                 for t in self.treasure_id:
                     self.canvas.tag_raise(t)
@@ -735,38 +749,35 @@ class mazeObj:
 
         draw_step(0)
 
-    # Vẽ đường đi của nhân vật
-    def draw_path(self, path_coords, sizeOfBlock=(40, 40), color="#50E671", 
-                  alpha=100, delay=16, command=None, cells_per_frame=10):
+
+    # Vẽ đường đi cuối cùng (có thể quay đầu)
+    def draw_path(self, path_coords, sizeOfBlock=(40, 40),
+                color="#50E671", alpha=120,
+                delay=16, command=None, cells_per_frame=10):
         self.animating = True
-        
+
         if not path_coords or not self.maze:
             return
 
         rows, cols = len(self.maze), len(self.maze[0])
         w, h = sizeOfBlock
 
-        # Gốc mê cung
         x, y = self.center_pos
         start_x = x - (cols * w) / 2
         start_y = y - (rows * h) / 2
 
-        # Chuẩn bị ảnh overlay rỗng (RGBA)
         overlay = Image.new("RGBA", (int(cols * w), int(rows * h)), (0, 0, 0, 0))
         draw = ImageDraw.Draw(overlay)
 
-        # Chuyển màu hex → RGB + alpha
-        r = int(color[1:3], 16)
-        g = int(color[3:5], 16)
-        b = int(color[5:7], 16)
-        fill_color = (r, g, b, alpha)
+        base_color = tuple(int(color[i:i+2], 16) for i in (1, 3, 5))
+        visit_count = {}
 
-        # ảnh ban đầu
         self.path_img = ImageTk.PhotoImage(overlay)
         self.path_id = self.canvas.create_image(start_x, start_y, anchor="nw", image=self.path_img)
         self.canvas.image_refs = getattr(self.canvas, "image_refs", [])
         self.canvas.image_refs.append(self.path_img)
 
+        # Layer order
         if self.treasure_id:
             for t in self.treasure_id:
                 self.canvas.tag_raise(t)
@@ -775,11 +786,10 @@ class mazeObj:
         if self.avatar_id:
             self.canvas.tag_raise(self.avatar_id)
 
-        # --- Hiệu ứng vẽ từng ô ---
         def draw_step(index=0):
             if index >= len(path_coords):
                 self.animating = False
-                # Khi vẽ xong toàn bộ, đảm bảo thứ tự hiển thị
+                # Khi vẽ xong, đảm bảo layer đúng và animate avatar
                 if self.avatar_id:
                     self.canvas.tag_raise(self.avatar_id)
                 if self.end_id:
@@ -787,29 +797,33 @@ class mazeObj:
                 if self.treasure_id:
                     for t in self.treasure_id:
                         self.canvas.tag_raise(t)
-
-                # Hàm thực thi khi vẽ xong path
                 self.animate_avatar_along_path(path_coords)
                 return
 
-            # Vẽ ô tiếp theo
+            # Vẽ cells_per_frame ô mỗi frame
             for k in range(cells_per_frame):
                 if index + k >= len(path_coords):
                     break
-                i, j = path_coords[index]
+                i, j = path_coords[index + k]
+
+                visit_count[(i, j)] = visit_count.get((i, j), 0) + 1
+                times = visit_count[(i, j)]
+                extra_alpha = min(255, alpha + times * 50)
+                fill_color = (*base_color, extra_alpha)
+
                 x1, y1 = j * w, i * h
                 x2, y2 = x1 + w, y1 + h
                 draw.rectangle([x1, y1, x2, y2], fill=fill_color)
 
-            # Cập nhật lại ảnh trên canvas
             self.path_img = ImageTk.PhotoImage(overlay)
             self.canvas.itemconfig(self.path_id, image=self.path_img)
             self.canvas.image_refs.append(self.path_img)
 
-            # Lên frame tiếp theo (60 FPS)
-            after_id = self.canvas.after(delay, draw_step, index + 1)
+            after_id = self.canvas.after(delay, draw_step, index + cells_per_frame)
             self._after_id.append(after_id)
+
         draw_step(0)
+
 
     # Cho nhân vật di chuyển
     def animate_avatar_along_path(self, path_coords, sizeOfBlock=(40, 40), speed=6, delay=16):
@@ -873,6 +887,17 @@ class mazeObj:
             )
         move_next(0)
         
+    # Ẩn nhân vật đi trong trường hợp chọn thuật toán belief state
+    def hide_avatar(self):
+        if self.avatar_id:
+            self.canvas.itemconfigure(self.avatar_id, state="hidden")
+
+    # Hiện lại nhân vật
+    def show_avatar(self):
+        if self.avatar_id:
+            self.canvas.itemconfigure(self.avatar_id, state="normal")
+
+
 class TimerObj:
     def __init__(self, canvas):
         self.canvas = canvas
@@ -922,6 +947,103 @@ class TimerObj:
         if self.text_id:
             self.canvas.itemconfigure(self.text_id, text="⏱ 0.00 s")
         self.elapsed = 0.0
+
+class AudioControl:
+    _initialized = False
+    _sound_on = True
+    _bg_channel = None
+    _bg_sound = None
+
+    def __init__(self, canvas, x=50, y=50, size=(50, 50)):
+        """
+        canvas: Canvas để vẽ
+        x, y: toạ độ góc trên bên trái
+        size: (width, height) của nút âm thanh
+        """
+        self.canvas = canvas
+        self.x = x
+        self.y = y
+        self.size = size
+        self.is_hover = False
+
+        # Khởi tạo âm thanh (chỉ 1 lần duy nhất)
+        if not AudioControl._initialized:
+            self.init_audio()
+
+        # --- Tải và resize hình ảnh ---
+        self.icon_on = self._load_image("Gallery/mute.png")
+        self.icon_on_hover = self._load_image("Gallery/muteHover.png")
+        self.icon_off = self._load_image("Gallery/unmute.png")
+        self.icon_off_hover = self._load_image("Gallery/unmuteHover.png")
+
+        # --- Chọn icon ban đầu ---
+        icon = self.icon_on if AudioControl._sound_on else self.icon_off
+        self.button_id = canvas.create_image(x, y, image=icon, anchor="nw")
+
+        # --- Gắn sự kiện ---
+        canvas.tag_bind(self.button_id, "<Button-1>", self.toggle_sound)
+        canvas.tag_bind(self.button_id, "<Enter>", self.on_hover)
+        canvas.tag_bind(self.button_id, "<Leave>", self.on_leave)
+
+    # ---------------- ÂM THANH -----------------
+    @classmethod
+    def init_audio(cls):
+        if cls._initialized:
+            return
+        cls._initialized = True
+
+        pygame.mixer.init()
+        pygame.init()
+
+        # Nhạc mở đầu
+        pygame.mixer.music.load("Sound/start.wav")
+        pygame.mixer.music.set_volume(1)
+        pygame.mixer.music.play()
+
+        # Nhạc nền lặp
+        cls._bg_sound = pygame.mixer.Sound("Sound/background.wav")
+        cls._bg_channel = pygame.mixer.Channel(1)
+        cls._bg_channel.play(cls._bg_sound, loops=-1)
+        cls._bg_channel.set_volume(1)
+
+    # ---------------- HÌNH ẢNH -----------------
+    def _load_image(self, path):
+        """Tải ảnh và resize theo self.size"""
+        img = Image.open(path).resize(self.size, Image.LANCZOS)
+        return ImageTk.PhotoImage(img)
+
+    def toggle_sound(self, event=None):
+        """Bật/tắt âm thanh toàn cục"""
+        AudioControl._sound_on = not AudioControl._sound_on
+        vol = 1 if AudioControl._sound_on else 0
+        pygame.mixer.music.set_volume(vol)
+        if AudioControl._bg_channel:
+            AudioControl._bg_channel.set_volume(vol)
+        self.update_icon()
+
+    def on_hover(self, event=None):
+        self.is_hover = True
+        self.update_icon()
+
+    def on_leave(self, event=None):
+        self.is_hover = False
+        self.update_icon()
+
+    def update_icon(self):
+        """Cập nhật hình ảnh nút theo trạng thái hiện tại"""
+        if AudioControl._sound_on:
+            icon = self.icon_on_hover if self.is_hover else self.icon_on
+        else:
+            icon = self.icon_off_hover if self.is_hover else self.icon_off
+        self.canvas.itemconfig(self.button_id, image=icon)
+        
+    def bring_to_front(self):
+        self.canvas.tag_raise(self.button_id)
+
+    @classmethod
+    def is_sound_on(cls):
+        return cls._sound_on
+
 
 # function create shadơw            
 def create_shadow(w, h, color="gray", radius=35):
