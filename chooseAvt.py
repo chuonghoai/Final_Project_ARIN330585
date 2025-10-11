@@ -1,6 +1,6 @@
 import tkinter as tk
 from PIL import Image, ImageTk
-from UiComponents import ButtonObj, ImageObj, AudioControl
+from uiComponents import ButtonObj, ImageObj, AudioControl
 from tkinter import font as tkFont
 
 class chooseAvt:

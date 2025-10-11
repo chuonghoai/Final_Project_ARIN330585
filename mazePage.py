@@ -1,6 +1,6 @@
 import tkinter as tk
 from PIL import Image, ImageTk
-from UiComponents import ButtonObj, ImageObj, ComboBoxObj, mazeObj, textObj, TimerObj, AudioControl
+from uiComponents import ButtonObj, ImageObj, ComboBoxObj, mazeObj, textObj, TimerObj, AudioControl
 import tkextrafont
 import algorithm
 import time

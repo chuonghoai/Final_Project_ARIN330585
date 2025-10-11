@@ -1,6 +1,6 @@
 import tkinter as tk
-import UiComponents
-from UiComponents import ButtonObj, ImageObj, AudioControl
+import uiComponents
+from uiComponents import ButtonObj, ImageObj, AudioControl
 import tkextrafont
 import pygame
 
@@ -72,12 +72,12 @@ class homePage:
         self.canvas.tag_bind(self.variable_playTxt, "<Button-1>", lambda e: self.click_playBtn())
         
         def hoverEnter_playtxt(e=None):
-            UiComponents.add_shadow(self.playBtn.canvas, self.playBtn.shadow_id, self.playBtn.item_id, self.playBtn.text_id)
+            uiComponents.add_shadow(self.playBtn.canvas, self.playBtn.shadow_id, self.playBtn.item_id, self.playBtn.text_id)
             x, y = self.canvas.coords(self.variable_playTxt)
             self.canvas.coords(self.variable_playTxt, x, y - 2)
             
         def hoverLeave_playtxt(e=None):
-            UiComponents.remove_shadow(self.playBtn.canvas, self.playBtn.shadow_id, self.playBtn.text_id)
+            uiComponents.remove_shadow(self.playBtn.canvas, self.playBtn.shadow_id, self.playBtn.text_id)
             x, y = self.canvas.coords(self.variable_playTxt)
             self.canvas.coords(self.variable_playTxt, x, y + 2)
             
