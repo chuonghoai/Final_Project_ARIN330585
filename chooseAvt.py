@@ -204,8 +204,8 @@ class chooseAvt:
         self.canvas.after(500, lambda: self.hachi_btn.btn_effect.slide_up(self.width//2 - 270, -150, hasShadow=True))
         self.canvas.after(500, lambda: self.hachi_btn.text_effect.slide_up(self.width//2 - 270, -150))
         
-        self.canvas.after(360, lambda: self.title_CHOOSE.effect.slide_up(self.width//2, 170, delay=25))
-        self.canvas.after(320, lambda: self.title_CHARACTER.effect.slide_up(self.width//2, 170, delay=25))
+        self.canvas.after(360, lambda: self.title_CHOOSE.effect.slide_up(self.width//2, 200, delay=25))
+        self.canvas.after(320, lambda: self.title_CHARACTER.effect.slide_up(self.width//2, 200, delay=25))
         
         self.canvas.after(700, self.run_mazePage)
         
@@ -213,3 +213,8 @@ class chooseAvt:
         self.canvas.destroy()
         from mazePage import mazePage
         mazePage(self.root, self.avtChoosed, self.width, self.height)
+
+if __name__=="__main__":
+    root = tk.Tk()
+    app = chooseAvt(root)
+    root.mainloop()
