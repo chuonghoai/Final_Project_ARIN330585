@@ -66,7 +66,7 @@ class mazePage:
                 "*	*	*	.	*	*	*	.	*	.	*	.	*	.	*	.	*",
                 "*	.	.	.	.	.	*	.	*	.	.	.	*	.	.	.	*",
                 "*	*	*	*	*	*	*	.	*	*	*	*	*	*	*	.	*",
-                "*	.	.	.	.	.	.	.	*	t	.	.	.	.	.	.	*",
+                "*	.	.	.	.	.	.	.	*	t	.	.	.	.	.	*	*",
                 "*	A	*	*	*	*	*	*	*	*	*	*	*	*	*	B	*"
             ],
             [
@@ -132,6 +132,7 @@ class mazePage:
         elif self.avtChoosed == "USAGI":
             avtPath = "Gallery/UsagiBackground.png"
         avtWarning = "Gallery/warning.png"
+        cantFindPathImg = "Gallery/cantFindPath.png"
         
         # Vẽ ảnh nền
         self.bg_img = ImageObj(self.canvas)
@@ -149,6 +150,15 @@ class mazePage:
             w=self.width, h=self.height
         )
         self.canvas.itemconfigure(self.bg_warning_id, state="hidden")
+
+        # Vẽ trước ảnh thông báo ko tìm thấy đường đi
+        self.bgCantFindPath = ImageObj(self.canvas)
+        self.bgCantFindPath_id = self.bgCantFindPath.create_image(
+            self.width//2, self.height//2,
+            cantFindPathImg,
+            w=self.width, h=self.height
+        )
+        self.canvas.itemconfigure(self.bgCantFindPath_id, state="hidden")
 
     def draw_congratulation_reachGoal(self, collected, total_treasure):
         # Vẽ gif
@@ -242,14 +252,19 @@ class mazePage:
         
     # Hàm kích hoạt của nút start
     def startClick(self):
+        self.resetMaze(changeMaze=False)
         def hideWarning(e=None):
             """Ẩn warning ngay khi click"""
             self.canvas.itemconfigure(self.bg_warning_id, state="hidden")
+            self.canvas.itemconfigure(self.bgCantFindPath_id, state="hidden")
 
             # Hủy after nếu còn tồn tại
             if hasattr(self, "warning_after"):
                 self.root.after_cancel(self.warning_after)
                 del self.warning_after
+            if hasattr(self, "cantFindPath_after"):
+                self.root.after_cancel(self.cantFindPath_after)
+                del self.cantFindPath_after
             self.root.unbind("<Button-1>")
             
         self.algorithmChoosed = self.algorithmCbb.getValue()
@@ -263,54 +278,60 @@ class mazePage:
                 
                 # Vẽ bộ đếm thời gian
                 self.timer.draw(280, 50)
+                
+                # Hàm thực thi các hành động sẽ xảy ra khi vẽ xong process
+                def ProcessDone():
+                    self.timer.stop()
+                    if not path:
+                        print("Không tìm được đường đi")
+                        self.canvas.itemconfigure(self.bgCantFindPath_id, state="normal")
+                        self.canvas.tag_raise(self.bgCantFindPath_id)
+                        self.cantFindPath_after = self.root.after(3000, lambda: self.canvas.itemconfigure(self.bgCantFindPath_id, state="hidden"))
+                        self.root.after(50, lambda: self.root.bind("<Button-1>", hideWarning))
+                        return
 
+                    # Kiểm tra nhân vật đã đến đích chưa để hiện thông báo chúc mừng
+                    def check_reach_goal():
+                        if self.maze.is_reach_goal:
+                            self.draw_congratulation_reachGoal(collected, total_treasure)
+                            self.enableStartBtn = True
+                        else:
+                            after_id = self.root.after(100, check_reach_goal)
+                            self._after_ids.append(after_id)
+                    check_reach_goal()
+                    
                 # Bắt đầu chạy và tính thời gian thuật toán
                 path, collected, total_treasure, explored_order = algorithm.chooseAlgorithm(self.algorithmChoosed, maze)
-                
                 print(f"Bạn đã chọn thuật toán {self.algorithmChoosed}")
-                if path is None:
-                    print("Không tìm được đường đi")
-                    return
-                
-                def onProcessDone():
-                    self.timer.stop()
-
-                self.maze.draw_search_process(explored_order, path, onFinish=onProcessDone)
-                def check_reach_goal():
-                    if self.maze.is_reach_goal:
-                        self.draw_congratulation_reachGoal(collected, total_treasure)
-                        self.enableStartBtn = True
-                    else:
-                        after_id = self.root.after(100, check_reach_goal)
-                        self._after_ids.append(after_id)
-                check_reach_goal()
+                self.maze.draw_search_process(explored_order, path, onFinish=ProcessDone)
         else:
             print("Hãy chọn thuật toán trước bạn nhé")
             self.canvas.itemconfigure(self.bg_warning_id, state="normal")
             self.canvas.tag_raise(self.bg_warning_id)
-
             self.warning_after = self.root.after(3000, lambda: self.canvas.itemconfigure(self.bg_warning_id, state="hidden"))
             self.root.after(50, lambda: self.root.bind("<Button-1>", hideWarning))
         
-    # Hàm thay đổi mê cung (nút reset)
-    def draw_reset(self):
-        def resetMaze():
-            self.enableStartBtn = True
-            self.timer.reset()
-            # Hủy toàn bộ hoạt ảnh đang chạy
-            if hasattr(self, "_after_ids"):
-                for aid in self._after_ids:
-                    try:
-                        self.canvas.after_cancel(aid)
-                    except:
-                        pass
-                self._after_ids.clear()
+    # Hàm reset và thay đối mê cung (nếu có)
+    def resetMaze(self, changeMaze=True):
+        self.enableStartBtn = True
+        self.timer.reset()
+        # Hủy toàn bộ hoạt ảnh đang chạy
+        if hasattr(self, "_after_ids"):
+            for aid in self._after_ids:
+                try:
+                    self.canvas.after_cancel(aid)
+                except:
+                    pass
+            self._after_ids.clear()
 
-            self.animating = False
-
+        self.animating = False
+        
+        if changeMaze:
             self.mazeIndex = (self.mazeIndex + 1) % len(self.mazeArr)
-            self.draw_maze(self.mazeArr[self.mazeIndex])
-
+        self.draw_maze(self.mazeArr[self.mazeIndex])    
+    
+    # Nút reset
+    def draw_reset(self):
         self.resetBtn = ButtonObj(self.canvas)
         self.resetBtn.create_button(
             self.width//2 + 280, self.height - 35,
@@ -318,7 +339,7 @@ class mazePage:
             text="RESET", font_size=15,
             font=self.fontMinecraft,
             font_style="normal",
-            command=resetMaze
+            command=self.resetMaze
         )
 
     # Hàm vẽ mê cung
@@ -344,3 +365,7 @@ class mazePage:
             row = line.strip().split()
             processed.append(row)
         return processed
+    
+root = tk.Tk()
+app = mazePage(root, "USAGI")
+root.mainloop()
