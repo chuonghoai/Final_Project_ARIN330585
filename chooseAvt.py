@@ -101,9 +101,8 @@ class chooseAvt:
         self.draw_Chikawa_btn()
         self.draw_Usagi_btn()
         
-        # Vẽ nút âm thanh
+        # Vẽ nút audio
         self.audio = AudioControl(self.canvas_CHOOSE, x=50, y=10)
-        self.audio.bring_to_front()
                 
     # Vẽ nền trắng và tiêu đề
     def draw_bgAndtitle(self):

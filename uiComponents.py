@@ -3,6 +3,7 @@ from tkinter import ttk, PhotoImage
 from PIL import Image, ImageDraw, ImageFont, ImageTk, ImageFilter
 import time
 import pygame
+import threading
 
 class effectObj:
     def __init__(self, canvas, item_id, pil_image=None):
@@ -826,7 +827,7 @@ class mazeObj:
 
 
     # Cho nhân vật di chuyển
-    def animate_avatar_along_path(self, path_coords, sizeOfBlock=(40, 40), speed=6, delay=16):
+    def animate_avatar_along_path(self, path_coords, sizeOfBlock=(40, 40), speed=20, delay=16):
         self.animating = True
         
         if not path_coords or not hasattr(self, 'avatar_id'):
@@ -897,40 +898,72 @@ class mazeObj:
         if self.avatar_id:
             self.canvas.itemconfigure(self.avatar_id, state="normal")
 
-
 class TimerObj:
     def __init__(self, canvas):
         self.canvas = canvas
-        self.text_id = None     # ID của text trên canvas
+        self.text_id = None       # ID của text (số thời gian)
+        self.button_bg = None     # ButtonObj làm nền
         self.running = False
         self.start_time = 0
         self.after_id = None
-        self.elapsed = 0.0      # thời gian đã trôi qua
+        self.elapsed = 0.0        # thời gian đã trôi qua
+        self.prefix = "⏱"
+        self.button_id = None     # ID hình nền button
+        self.bg_text_id = None    # ID text của button (sẽ bỏ qua)
 
-    def draw(self, x, y, font=("Consolas", 18, "bold"), color="#222", prefix="⏱"):
-        """Vẽ bộ đếm tại vị trí (x, y) và bắt đầu đếm"""
-        # Nếu đã có text cũ → xóa đi
+    def draw(self, x, y, w=150, h=45, prefix="⏱",
+             font=("Consolas", 18, "bold"), color="black",
+             bg_color1="#fdf0d3", bg_color2="#fdf0d3"):
+        # Xoá đối tượng cũ (nếu có)
         if self.text_id:
             self.canvas.delete(self.text_id)
+        if self.button_bg:
+            if self.button_bg.item_id:
+                self.canvas.delete(self.button_bg.item_id)
+            if self.button_bg.text_id:
+                self.canvas.delete(self.button_bg.text_id)
 
-        # Tạo text ban đầu
-        self.text_id = self.canvas.create_text(x, y, text=f"{prefix} 0.00 s",
-                                               font=font, fill=color, anchor="center")
+        self.prefix = prefix
+        self.font = font
+        self.color = color
+
+        # --- Tạo button nền ---
+        self.button_bg = ButtonObj(self.canvas)
+        self.button_id, self.bg_text_id = self.button_bg.create_button(
+            x, y, w=w, h=h, text="", 
+            color1=bg_color1, color2=bg_color2,
+            text_color=color,
+            font=font[0], font_size=font[1],
+            font_style=font[2],
+            command=None,
+            haveShadow=False,
+            hasBorder=False
+        )
+
+        # --- Tạo text thời gian chồng lên ---
+        self.text_id = self.canvas.create_text(
+            x, y,
+            text=f"{prefix} 0.00 s",
+            font=font, fill=color, anchor="center"
+        )
+
+        # --- Bắt đầu đếm thời gian ---
         self.start_time = time.perf_counter()
         self.running = True
-        self._update(prefix)
+        self._update()
 
-    def _update(self, prefix):
-        """Cập nhật text mỗi frame"""
+    def _update(self):
+        """Cập nhật text thời gian"""
         if not self.running:
             return
 
-        # Tính thời gian trôi
         self.elapsed = time.perf_counter() - self.start_time
-        self.canvas.itemconfigure(self.text_id, text=f"{prefix} {self.elapsed:.2f} s")
+        self.canvas.itemconfigure(
+            self.text_id, text=f"{self.prefix} {self.elapsed:.2f} s"
+        )
 
-        # Cập nhật mỗi 100ms (0.1s)
-        self.after_id = self.canvas.after(100, self._update, prefix)
+        # Cập nhật mỗi 0.1s
+        self.after_id = self.canvas.after(100, self._update)
 
     def stop(self):
         """Dừng timer"""
@@ -945,7 +978,7 @@ class TimerObj:
         """Reset timer về 0"""
         self.stop()
         if self.text_id:
-            self.canvas.itemconfigure(self.text_id, text="⏱ 0.00 s")
+            self.canvas.itemconfigure(self.text_id, text=f"{self.prefix} 0.00 s")
         self.elapsed = 0.0
 
 class AudioControl:
@@ -954,12 +987,7 @@ class AudioControl:
     _bg_channel = None
     _bg_sound = None
 
-    def __init__(self, canvas, x=50, y=50, size=(50, 50)):
-        """
-        canvas: Canvas để vẽ
-        x, y: toạ độ góc trên bên trái
-        size: (width, height) của nút âm thanh
-        """
+    def __init__(self, canvas, x=50, y=50, size=(30, 30)):
         self.canvas = canvas
         self.x = x
         self.y = y
@@ -997,23 +1025,32 @@ class AudioControl:
 
         # Nhạc mở đầu
         pygame.mixer.music.load("Sound/start.wav")
-        pygame.mixer.music.set_volume(1)
+        pygame.mixer.music.set_volume(0.5)
         pygame.mixer.music.play()
 
-        # Nhạc nền lặp
+        # Chuẩn bị nhạc nền
         cls._bg_sound = pygame.mixer.Sound("Sound/background.wav")
         cls._bg_channel = pygame.mixer.Channel(1)
-        cls._bg_channel.play(cls._bg_sound, loops=-1)
-        cls._bg_channel.set_volume(1)
+
+        # Chạy luồng riêng để phát nhạc nền sau khi nhạc start kết thúc
+        threading.Thread(target=cls._wait_and_play_bg, daemon=True).start()
+
+    @classmethod
+    def _wait_and_play_bg(cls):
+        """Chờ nhạc start.wav phát xong rồi mới phát nhạc nền"""
+        while pygame.mixer.music.get_busy():  # Kiểm tra xem nhạc start còn phát không
+            pygame.time.wait(100)
+        # Khi nhạc start kết thúc
+        if cls._sound_on and cls._bg_sound:
+            cls._bg_channel.play(cls._bg_sound, loops=-1)
+            cls._bg_channel.set_volume(0.5)
 
     # ---------------- HÌNH ẢNH -----------------
     def _load_image(self, path):
-        """Tải ảnh và resize theo self.size"""
         img = Image.open(path).resize(self.size, Image.LANCZOS)
         return ImageTk.PhotoImage(img)
 
     def toggle_sound(self, event=None):
-        """Bật/tắt âm thanh toàn cục"""
         AudioControl._sound_on = not AudioControl._sound_on
         vol = 1 if AudioControl._sound_on else 0
         pygame.mixer.music.set_volume(vol)
@@ -1030,7 +1067,6 @@ class AudioControl:
         self.update_icon()
 
     def update_icon(self):
-        """Cập nhật hình ảnh nút theo trạng thái hiện tại"""
         if AudioControl._sound_on:
             icon = self.icon_on_hover if self.is_hover else self.icon_on
         else:
@@ -1043,7 +1079,6 @@ class AudioControl:
     @classmethod
     def is_sound_on(cls):
         return cls._sound_on
-
 
 # function create shadơw            
 def create_shadow(w, h, color="gray", radius=35):

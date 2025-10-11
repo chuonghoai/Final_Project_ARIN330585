@@ -122,7 +122,7 @@ class mazePage:
         self.draw_reset()
         
         # Vẽ nút âm thanh
-        self.audio = AudioControl(self.canvas, x=220, y=25)
+        self.audio = AudioControl(self.canvas, x=220, y=35)
         
     # Vẽ background
     def draw_background(self):
@@ -217,7 +217,7 @@ class mazePage:
     def draw_startbtn(self):
         self.startBtn = ButtonObj(self.canvas)
         self._stBtn, self._stTxt = self.startBtn.create_button(
-            self.width - 200, self.height//2 - 100,
+            self.width - 185, self.height//2 - 100,
             w=200, h=50,
             text="START", text_color="white",
             font=self.fontMinecraft,
@@ -226,7 +226,7 @@ class mazePage:
         
     # Vẽ combo box chọn thuật toán
     def draw_cbbox(self):
-        values = ["BFS", "And-Or Tree", "Belief state", "Partially observable deterministic", "AC-3"]
+        values = ["BFS", "And-Or Tree", "Belief state", "Partially observable", "AC-3"]
         self.algorithmCbb = ComboBoxObj(self.canvas)
         self.algorithmCbb.createComboBox(
             self.width - 185, self.height//2 - 200,
