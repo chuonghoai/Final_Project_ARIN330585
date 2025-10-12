@@ -1,6 +1,7 @@
 from collections import deque
 from heapq import heappush, heappop
 import time
+import heapq
 
 # Chọn thuật toán
 def chooseAlgorithm(name, maze):
@@ -10,7 +11,7 @@ def chooseAlgorithm(name, maze):
     if name == "And-Or Tree":
         result = and_or_tree_search(maze)
     if name == "Belief state":
-        result = belief_state_search(maze)
+        result = belief_state_search_opt(maze)
     if name == "Partially observable deterministic":
         result = partial_observable_search(maze)
     if name == "AC-3":
@@ -180,12 +181,10 @@ def and_or_tree_search(maze):
 
 
 # 4. Belief state search
-def belief_state_search(maze):
+def belief_state_search_opt(maze):
     rows, cols = len(maze), len(maze[0])
 
     uncertain_positions, end, treasures = [], None, []
-
-    # Quét mê cung để tìm vị trí quan trọng
     for i in range(rows):
         for j in range(cols):
             c = maze[i][j]
@@ -196,81 +195,81 @@ def belief_state_search(maze):
             elif c == "t":
                 treasures.append((i, j))
             elif c == "A":
-                # Xem A như là đường trống
                 maze[i][j] = "."
+
+    if not uncertain_positions or not end:
+        return None, 0, len(treasures), []
 
     total_treasure = len(treasures)
     treasure_index = {p: i for i, p in enumerate(treasures)}
     ALL_TREASURE = (1 << total_treasure) - 1
 
-    # ✅ Belief khởi đầu — tập hợp tất cả vị trí nghi ngờ
-    if not uncertain_positions:
-        return None, 0, total_treasure, []  # không có vị trí khởi đầu
-    if not end:
-        return None, 0, total_treasure, []
-
     start_belief = frozenset(uncertain_positions)
     start_state = (start_belief, 0)
-    queue = deque([(start_state, [])])
-    visited = set([start_state])
+
+    visited = set()
     process, added = [], set()
 
     def move_belief(belief, dx, dy):
-        """Di chuyển toàn bộ belief theo hướng (dx, dy)."""
         new_belief = set()
         for (x, y) in belief:
             nx, ny = x + dx, y + dy
             if not (0 <= nx < rows and 0 <= ny < cols) or maze[nx][ny] == "*":
-                nx, ny = x, y  # đụng tường → đứng lại
+                nx, ny = x, y
             new_belief.add((nx, ny))
         return frozenset(new_belief)
 
     def record_belief(belief):
-        """Lưu các vị trí từng được agent tin là có thể đang ở."""
         for pos in belief:
             if pos not in added:
                 process.append(pos)
                 added.add(pos)
 
+    # ✅ Heuristic: trung bình khoảng cách Manhattan từ mỗi vị trí belief đến đích
+    def heuristic(belief, mask):
+        bx = sum(abs(x - end[0]) + abs(y - end[1]) for (x, y) in belief)
+        h = bx / len(belief)
+        # thêm phần thưởng nếu còn kho báu
+        if mask != ALL_TREASURE and total_treasure > 0:
+            remain = total_treasure - bin(mask).count("1")
+            h += remain * 2  # khuyến khích ăn kho báu
+        return h
+
+    # A* priority queue
+    pq = [(heuristic(start_belief, 0), 0, start_state, [])]
     best_path = None
     best_mask = 0
 
-    # BFS trên không gian belief
-    while queue:
-        (belief, mask), path = queue.popleft()
+    while pq:
+        est_cost, g, (belief, mask), path = heapq.heappop(pq)
+        if (belief, mask) in visited:
+            continue
+        visited.add((belief, mask))
         record_belief(belief)
 
-        # Nếu tất cả belief đều nằm tại B (đích)
+        # Đích hợp lệ nếu mọi belief đều nằm tại end
         if all(pos == end for pos in belief):
             if bin(mask).count("1") > bin(best_mask).count("1"):
                 best_mask = mask
                 best_path = [p for step in path for p in step] + list(belief)
             if mask == ALL_TREASURE:
-                break  # ăn hết kho báu thì dừng
+                break
 
-        # Di chuyển theo 4 hướng
+        # Di chuyển 4 hướng
         for dx, dy in [(-1,0),(1,0),(0,-1),(0,1)]:
             new_belief = move_belief(belief, dx, dy)
             new_mask = mask
-
-            # Kiểm tra ăn kho báu
             for (x, y) in new_belief:
                 if maze[x][y] == "t":
                     new_mask |= 1 << treasure_index[(x, y)]
 
-            new_state = (new_belief, new_mask)
-            if new_state == (belief, mask):
-                continue
-            if new_state not in visited:
-                visited.add(new_state)
-                queue.append((new_state, path[:] + [list(belief)]))
+            if (new_belief, new_mask) not in visited:
+                h = heuristic(new_belief, new_mask)
+                heapq.heappush(pq, (g + 1 + h, g + 1, (new_belief, new_mask), path + [list(belief)]))
 
-    # ✅ Nếu không đạt kết quả hoàn hảo → trả kết quả tốt nhất
-    if best_path:
-        collected = bin(best_mask).count("1")
-        return best_path, collected, total_treasure, process
+    collected = bin(best_mask).count("1")
+    return best_path, collected, total_treasure, process
 
-    return None, 0, total_treasure, process
 
 # 5. nhìn thấy 1 phần
 def partial_observable_search(maze, vision_range=1):
