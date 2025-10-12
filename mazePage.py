@@ -55,34 +55,34 @@ class mazePage:
         self.mazeArr = [
             [
                 "*	*	*	*	*	*	*	*	*	*	*	*	*	*	*	*	*",
-                "*	.	*	?	.	.	.	.	.	.	.	.	.	.	t	.	*",
+                "*	.	*	.	.	.	.	.	.	.	.	.	.	.	t	.	*",
                 "*	.	*	.	*	*	*	.	*	.	*	.	*	*	*	.	*",
                 "*	.	.	.	*	.	*	.	*	.	*	.	.	.	*	.	*",
                 "*	.	*	*	*	t	*	.	*	.	*	*	*	.	*	.	*",
-                "*	.	.	.	.	.	*	.	*	.	?	.	*	.	*	.	*",
+                "*	.	.	.	.	.	*	.	*	.	?	.	*	.	*	t	*",
                 "*	*	*	.	*	*	*	.	*	*	*	.	*	.	*	*	*",
                 "*	.	.	.	*	.	.	.	*	.	.	.	*	.	.	.	*",
                 "*	.	*	*	*	.	*	*	*	.	*	*	*	*	*	.	*",
-                "*	.	.	.	*	.	.	.	*	.	*	.	.	.	*	.	*",
+                "*	.	t	.	*	.	.	.	*	.	*	.	.	.	*	.	*",
                 "*	*	*	.	*	*	*	.	*	.	*	.	*	.	*	.	*",
-                "*	.	.	.	.	.	*	.	*	.	.	.	*	.	.	.	*",
+                "*	.	.	.	.	.	*	t	*	.	.	.	*	.	.	.	*",
                 "*	*	*	*	*	*	*	.	*	*	*	*	*	*	*	.	*",
-                "*	.	.	.	.	.	.	.	*	t	.	.	.	.	.	?	*",
+                "*	.	.	.	t	.	.	.	*	t	.	.	.	.	.	?	*",
                 "*	A	*	*	*	*	*	*	*	*	*	*	*	*	*	B	*"
             ],
             [
                 "*  *   *   *   *   *   *   *   *   *   *   *   *   *   *   *   *",
                 "*  .   *   ?   .   .   .   .   .   .   .   .   *   .   .   .   *",
                 "*  .   *   *   *   .   *   *   *   *   *   .   *   .   *   *   *",
-                "*  .   .   .   .   .   *   .   *   ?   .   .   *   .   .   .   *",
+                "*  .   .   .   .   .   *   .   *   ?   .   .   *   .   ?   .   *",
                 "*  *   *   *   *   *   *   .   *   .   *   *   *   .   *   .   *",
                 "*  .   .   .   .   .   *   .   *   .   .   .   *   .   *   .   *",
                 "*  .   *   *   *   .   *   .   *   *   *   .   *   .   *   .   *",
-                "A  .   .   .   *   .   .   .   .   .   *   .   *   .   *   .   B",
+                "A  ?   .   .   *   .   .   .   .   .   *   .   *   .   *   .   B",
                 "*  .   *   .   *   .   *   *   *   *   *   .   *   *   *   .   *",
                 "*  .   *   .   *   .   *   .   .   .   *   ?   .   .   *   .   *",
                 "*  .   *   .   *   .   *   .   *   .   *   *   *   .   *   .   *",
-                "*  .   *   .   *   .   *   .   *   .   .   .   *   .   *   .   *",
+                "*  .   *   ?   *   .   *   .   *   .   .   .   *   .   *   .   *",
                 "*  .   *   .   *   *   *   .   *   *   *   .   *   .   *   .   *",
                 "*  .   *   .   .   .   .   .   .   .   *   .   .   .   .   t   *",
                 "*  *   *   *   *   *   *   *   *   *   *   *   *   *   *   *   *"
@@ -90,16 +90,16 @@ class mazePage:
             [
                 "*  *   *   *   *   *   *   *   A   *   *   *   *   *   *   *   *",
                 "*  .   *   .   t   .   .   .   .   .   *   .   .   .   .   .   *",
-                "*  .   *   *   *   .   *   *   *   .   *   .   *   *   *   .   *",
+                "*  .   *   *   *   .   *   *   *   ?   *   .   *   *   *   .   *",
                 "*  .   *   .   .   .   *   .   *   .   *   .   *   .   .   .   *",
                 "*  .   *   .   *   *   *   .   *   .   *   .   *   .   *   *   *",
                 "*  ?   .   .   *   .   *   .   .   .   *   .   *   .   .   .   *",
                 "*  *   *   *   *   .   *   .   *   *   *   .   *   *   *   .   *",
-                "*  .   .   .   *   .   .   .   *   .   .   .   *   .   .   .   *",
+                "*  .   .   .   *   ?   .   .   *   .   .   .   *   .   .   .   *",
                 "*  .   *   *   *   .   *   *   *   .   *   .   *   .   *   *   *",
                 "*  .   .   .   .   .   *   .   .   .   *   .   *   .   *   .   *",
                 "*  .   *   *   *   *   *   *   *   *   *   .   *   .   *   .   *",
-                "*  .   .   .   *   .   .   .   *   .   .   .   .   .   *   ?   *",
+                "*  .   .   .   *   .   .   .   *   .   .   .   *   .   *   ?   *",
                 "*  *   *   .   *   .   *   .   *   .   *   *   *   .   *   .   *",
                 "*  ?   .   .   .   .   *   .   .   .   *   .   .   .   .   t   *",
                 "*  *   *   *   *   *   *   *   B   *   *   *   *   *   *   *   *"
@@ -122,7 +122,7 @@ class mazePage:
         self.draw_reset()
         
         # Vẽ nút âm thanh
-        self.audio = AudioControl(self.canvas, x=220, y=25)
+        self.audio = AudioControl(self.canvas, x=220, y=35)
         
     # Vẽ background
     def draw_background(self):
@@ -217,7 +217,7 @@ class mazePage:
     def draw_startbtn(self):
         self.startBtn = ButtonObj(self.canvas)
         self._stBtn, self._stTxt = self.startBtn.create_button(
-            self.width - 200, self.height//2 - 100,
+            self.width - 185, self.height//2 - 100,
             w=200, h=50,
             text="START", text_color="white",
             font=self.fontMinecraft,
@@ -226,7 +226,7 @@ class mazePage:
         
     # Vẽ combo box chọn thuật toán
     def draw_cbbox(self):
-        values = ["BFS", "And-Or Tree", "Belief state", "Partially observable deterministic", "AC-3"]
+        values = ["BFS", "And-Or Tree", "Belief state", "Partially observable", "AC-3"]
         self.algorithmCbb = ComboBoxObj(self.canvas)
         self.algorithmCbb.createComboBox(
             self.width - 185, self.height//2 - 200,
@@ -288,7 +288,11 @@ class mazePage:
                 self.enableStartBtn = False
                 maze = self.processMazeStructure(self.mazeArr[self.mazeIndex])
 
+                # Vẽ bộ đếm thời gian
+                self.timer.draw(350, 50)
+
                 def ProcessDone():
+                    self.timer.stop()
                     self.maze.show_avatar()
                     if not path or path is None:
                         print("Không tìm được đường đi")
@@ -310,16 +314,11 @@ class mazePage:
                     check_reach_goal()
 
                 def run_algorithm():
-                    # Vẽ bộ đếm thời gian
-                    self.timer.draw(350, 50)
-                    
                     nonlocal path, collected, total_treasure, process, all_process_by_limit
                     path, collected, total_treasure, process = algorithm.chooseAlgorithm(
                         self.algorithmChoosed, maze)
-                    
-                    # Đếm xong thời gian
-                    self.timer.stop()
                     print(path)
+                    # Khi thuật toán xong → gọi lại UI (phải dùng after vì đang trong thread khác)
                     self.root.after(0, lambda: on_algorithm_done())
 
                 def on_algorithm_done():
