@@ -559,6 +559,7 @@ class mazeObj:
         self.animating = animating  # Lưu lại trạng thái hoạt ảnh
         self._after_id = _after_id     # Lưu lại hàng đợi after
         self.is_reach_goal = False      # kiểm tra đã đến đích chưa
+        self.processDone = False        # Kiểm tra đã vẽ xong process chưa
 
     def createMaze(self, x, y, maze, 
                    pathAvt=None, pathWall=None, pathFloor=None, pathTreasure=None, pathEnd=None,
@@ -709,6 +710,7 @@ class mazeObj:
                 return
             if index >= len(explored_cells):
                 self.animating = False
+                self.processDone = True
                 self.draw_path(path_coords, sizeOfBlock=sizeOfBlock)
                 if onFinish:
                     onFinish()
@@ -755,6 +757,7 @@ class mazeObj:
     def draw_path(self, path_coords, sizeOfBlock=(40, 40),
                 color="#50E671", alpha=120,
                 delay=16, command=None, cells_per_frame=10):
+        self.processDone = True
         self.animating = True
 
         if not path_coords or not self.maze:
@@ -824,7 +827,6 @@ class mazeObj:
             self._after_id.append(after_id)
 
         draw_step(0)
-
 
     # Cho nhân vật di chuyển
     def animate_avatar_along_path(self, path_coords, sizeOfBlock=(40, 40), speed=20, delay=16):
@@ -897,6 +899,103 @@ class mazeObj:
     def show_avatar(self):
         if self.avatar_id:
             self.canvas.itemconfigure(self.avatar_id, state="normal")
+
+    # Hàm vẽ đường đi dành riêng cho thuật toán Partially observable
+    def draw_path_POS(self, maze, path_coords,
+                    sizeOfBlock=(40, 40),
+                    color="#50E671", alpha=120,
+                    delay=16, cells_per_frame=5,
+                    onFinish=None):
+        self.processDone = True
+        self.animating = True
+
+        if not path_coords or not maze:
+            return
+
+        rows, cols = len(maze), len(maze[0])
+        w, h = sizeOfBlock
+
+        x, y = self.center_pos
+        start_x = x - (cols * w) / 2
+        start_y = y - (rows * h) / 2
+
+        overlay = Image.new("RGBA", (int(cols * w), int(rows * h)), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(overlay)
+
+        base_color = tuple(int(color[i:i+2], 16) for i in (1, 3, 5))
+        visit_count = {}
+
+        # Nạp ảnh tường và kho báu
+        wall_img = Image.open(self.pathWall).convert("RGBA").resize((w, h))
+        treasure_img = Image.open(self.pathTreasure).convert("RGBA").resize((w, h))
+
+        self.path_img = ImageTk.PhotoImage(overlay)
+        self.path_id = self.canvas.create_image(start_x, start_y, anchor="nw", image=self.path_img)
+        self.canvas.image_refs = getattr(self.canvas, "image_refs", [])
+        self.canvas.image_refs.append(self.path_img)
+
+        collected = set()
+
+        def draw_step(index=0):
+            if index >= len(path_coords):
+                self.animating = False
+                # Đảm bảo layer đúng khi kết thúc
+                if self.avatar_id:
+                    self.canvas.tag_raise(self.avatar_id)
+                if self.end_id:
+                    self.canvas.tag_raise(self.end_id)
+                if self.treasure_id:
+                    for t in self.treasure_id:
+                        self.canvas.tag_raise(t)
+                self.animate_avatar_along_path(path_coords)
+
+                if callable(onFinish):
+                    onFinish()
+                return
+
+            for k in range(cells_per_frame):
+                if index + k >= len(path_coords):
+                    break
+                i, j = path_coords[index + k]
+
+                visit_count[(i, j)] = visit_count.get((i, j), 0) + 1
+                times = visit_count[(i, j)]
+                extra_alpha = min(255, alpha + times * 50)
+                fill_color = (*base_color, extra_alpha)
+                x1, y1 = j * w, i * h
+                x2, y2 = x1 + w, y1 + h
+                draw.rectangle([x1, y1, x2, y2], fill=fill_color)
+
+                if maze[i][j] == 't':
+                    collected.add((i, j))
+                    maze[i][j] = '.'
+
+                for dr, dc in [(-1,0), (1,0), (0,-1), (0,1)]:
+                    ni, nj = i + dr, j + dc
+                    if 0 <= ni < rows and 0 <= nj < cols:
+                        val = maze[ni][nj]
+                        if (ni, nj) in collected:
+                            continue
+                        px, py = nj * w, ni * h
+                        if val == '*':
+                            overlay.paste(wall_img, (int(px), int(py)), wall_img)
+                        elif val == 't':
+                            overlay.paste(treasure_img, (int(px), int(py)), treasure_img)
+
+            self.path_img = ImageTk.PhotoImage(overlay)
+            self.canvas.itemconfig(self.path_id, image=self.path_img)
+            self.canvas.image_refs.append(self.path_img)
+
+            if self.treasure_id:
+                for t in self.treasure_id:
+                    self.canvas.tag_raise(t)
+            if self.avatar_id:
+                self.canvas.tag_raise(self.avatar_id)
+
+            after_id = self.canvas.after(delay, draw_step, index + cells_per_frame)
+            self._after_id.append(after_id)
+
+        draw_step(0)
 
 class TimerObj:
     def __init__(self, canvas):

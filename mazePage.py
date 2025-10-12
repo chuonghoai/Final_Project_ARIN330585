@@ -5,6 +5,7 @@ import tkextrafont
 import algorithm
 import time
 import threading
+import random
 
 class mazePage:
     def __init__(self, root, avtChoosed, width=1100, height=700):
@@ -36,6 +37,9 @@ class mazePage:
         self.animating = False
         self._after_ids = []
         
+        # Cờ của thread chạy algorithm
+        self.stopAlgorithm = False
+        
         # Vẽ bộ đếm thời gian        
         self.timer = TimerObj(self.canvas)
         
@@ -55,34 +59,34 @@ class mazePage:
         self.mazeArr = [
             [
                 "*	*	*	*	*	*	*	*	*	*	*	*	*	*	*	*	*",
-                "*	.	*	.	.	.	.	.	.	.	.	.	.	.	t	.	*",
+                "*	.	*	.	.	.	.	.	.	?	.	.	.	.	.	t	*",
                 "*	.	*	.	*	*	*	.	*	.	*	.	*	*	*	.	*",
-                "*	.	.	.	*	.	*	.	*	.	*	.	.	.	*	.	*",
-                "*	.	*	*	*	t	*	.	*	.	*	*	*	.	*	.	*",
-                "*	.	.	.	.	.	*	.	*	.	?	.	*	.	*	t	*",
+                "*	.	.	.	*	t	*	.	*	.	*	.	.	.	*	.	*",
+                "*	.	*	*	*	.	*	.	*	.	*	*	*	.	*	.	*",
+                "*	.	.	.	.	.	*	.	*	.	?	.	*	.	*	.	*",
                 "*	*	*	.	*	*	*	.	*	*	*	.	*	.	*	*	*",
-                "*	.	.	.	*	.	.	.	*	.	.	.	*	.	.	.	*",
+                "*	.	.	.	*	.	.	.	*	t	.	.	*	.	.	.	*",
                 "*	.	*	*	*	.	*	*	*	.	*	*	*	*	*	.	*",
-                "*	.	t	.	*	.	.	.	*	.	*	.	.	.	*	.	*",
+                "*	.	.	.	*	.	.	.	*	.	*	.	.	.	*	.	*",
                 "*	*	*	.	*	*	*	.	*	.	*	.	*	.	*	.	*",
-                "*	.	.	.	.	.	*	t	*	.	.	.	*	.	.	.	*",
+                "*	.	.	.	.	.	*	.	*	.	.	.	*	.	.	.	*",
                 "*	*	*	*	*	*	*	.	*	*	*	*	*	*	*	.	*",
-                "*	.	.	.	t	.	.	.	*	t	.	.	.	.	.	?	*",
+                "*	.	.	.	t	.	.	.	*	.	.	.	.	.	.	?	*",
                 "*	A	*	*	*	*	*	*	*	*	*	*	*	*	*	B	*"
             ],
             [
                 "*  *   *   *   *   *   *   *   *   *   *   *   *   *   *   *   *",
                 "*  .   *   ?   .   .   .   .   .   .   .   .   *   .   .   .   *",
                 "*  .   *   *   *   .   *   *   *   *   *   .   *   .   *   *   *",
-                "*  .   .   .   .   .   *   .   *   ?   .   .   *   .   ?   .   *",
+                "*  .   .   .   .   .   *   .   *   .   .   .   *   .   .   .   *",
                 "*  *   *   *   *   *   *   .   *   .   *   *   *   .   *   .   *",
                 "*  .   .   .   .   .   *   .   *   .   .   .   *   .   *   .   *",
                 "*  .   *   *   *   .   *   .   *   *   *   .   *   .   *   .   *",
                 "A  ?   .   .   *   .   .   .   .   .   *   .   *   .   *   .   B",
                 "*  .   *   .   *   .   *   *   *   *   *   .   *   *   *   .   *",
-                "*  .   *   .   *   .   *   .   .   .   *   ?   .   .   *   .   *",
+                "*  .   *   .   *   .   *   .   .   .   *   .   .   .   *   .   *",
                 "*  .   *   .   *   .   *   .   *   .   *   *   *   .   *   .   *",
-                "*  .   *   ?   *   .   *   .   *   .   .   .   *   .   *   .   *",
+                "*  .   *   .   *   .   *   .   *   .   .   .   *   .   *   .   *",
                 "*  .   *   .   *   *   *   .   *   *   *   .   *   .   *   .   *",
                 "*  .   *   .   .   .   .   .   .   .   *   .   .   .   .   t   *",
                 "*  *   *   *   *   *   *   *   *   *   *   *   *   *   *   *   *"
@@ -99,9 +103,9 @@ class mazePage:
                 "*  .   *   *   *   .   *   *   *   .   *   .   *   .   *   *   *",
                 "*  .   .   .   .   .   *   .   .   .   *   .   *   .   *   .   *",
                 "*  .   *   *   *   *   *   *   *   *   *   .   *   .   *   .   *",
-                "*  .   .   .   *   .   .   .   *   .   .   .   *   .   *   ?   *",
+                "*  .   .   .   *   .   .   .   *   .   .   .   .   .   *   .   *",
                 "*  *   *   .   *   .   *   .   *   .   *   *   *   .   *   .   *",
-                "*  ?   .   .   .   .   *   .   .   .   *   .   .   .   .   t   *",
+                "*  .   .   .   .   .   *   .   .   .   *   .   .   .   .   t   *",
                 "*  *   *   *   *   *   *   *   B   *   *   *   *   *   *   *   *"
             ]
         ]
@@ -237,12 +241,48 @@ class mazePage:
             onSelect=self.on_algorithm_change
         )
     
+    # Che đi phần lớn mê cung để truyền cho thuật toán Partially observable
+    def blindMaze(self, maze):
+        # Sao chép mê cung
+        maze_copy = [list(row) for row in maze]
+        height = len(maze_copy)
+        width = len(maze_copy[0])
+
+        treasure_positions = [(i, j) for i in range(height) for j in range(width) if maze_copy[i][j] == 't']
+
+        for i in range(height):
+            for j in range(width):
+                if (maze_copy[i][j] == "*" or maze_copy[i][j] == "?" or maze_copy[i][j] == "t") \
+                    and i != 0 and i != height-1 and j != 0 and j != width-1:
+                    maze_copy[i][j] = "."
+
+        if treasure_positions:
+            n_treasures = random.randint(1, len(treasure_positions))
+            chosen = random.sample(treasure_positions, n_treasures)
+            for (i, j) in chosen:
+                maze_copy[i][j] = "t"
+
+        maze_copy = ["\t".join(row) for row in maze_copy]
+        return maze_copy
+
+    
+    # Kiểm tra khi thay đổi thuật toán
     def on_algorithm_change(self, value):
-        if hasattr(self, "maze") and self.maze.avatar_id:
-            if value == "Belief state":
-                self.maze.hide_avatar()
-            else:
-                self.maze.show_avatar()  
+        if not (hasattr(self, "maze") and self.maze.avatar_id):
+            return
+
+        if value == "Belief state":
+            self.maze.hide_avatar()
+            return
+
+        if value == "Partially observable":
+            self.maze.show_avatar()
+            self.mazeCoverWall = self.blindMaze(self.mazeArr[self.mazeIndex])
+            self.draw_maze(self.mazeCoverWall)
+            return
+
+        self.maze.show_avatar()
+        self.draw_maze(self.mazeArr[self.mazeIndex])
     
     # Thêm nút quay lui
     def draw_back(self):
@@ -264,7 +304,8 @@ class mazePage:
         
     # Hàm kích hoạt của nút start
     def startClick(self):
-        self.resetMaze(changeMaze=False)
+        self.resetMaze(changeMaze=False, resetBindMaze=False)
+        
         def hideWarning(e=None):
             """Ẩn warning ngay khi click"""
             self.canvas.itemconfigure(self.bg_warning_id, state="hidden")
@@ -283,9 +324,16 @@ class mazePage:
         
         if self.algorithmChoosed:
             if (self.enableStartBtn and not self.maze.is_reach_goal) or self.maze.is_reach_goal:
-                if self.maze.is_reach_goal:
-                    self.draw_maze(self.mazeArr[self.mazeIndex])
+                # if self.maze.is_reach_goal:
+                #     self.draw_maze(self.mazeArr[self.mazeIndex])
                 self.enableStartBtn = False
+                
+                # Kiểm tra thuật toán đang chọn có phải là POS ko
+                mazeCover = None
+                if self.algorithmChoosed == "Partially observable":
+                    mazeCover = self.processMazeStructure(self.mazeCoverWall)
+                
+                # lấy dữ liệu mê cung truyền vào thuật toán
                 maze = self.processMazeStructure(self.mazeArr[self.mazeIndex])
 
                 # Vẽ bộ đếm thời gian
@@ -293,7 +341,11 @@ class mazePage:
 
                 def ProcessDone():
                     self.timer.stop()
-                    self.maze.show_avatar()
+                    
+                    if self.maze.processDone and hasattr(self, "maze"):
+                        self.maze.processDone = False
+                        self.maze.show_avatar()
+                    
                     if not path or path is None:
                         print("Không tìm được đường đi")
                         self.canvas.itemconfigure(self.bgCantFindPath_id, state="normal")
@@ -314,21 +366,39 @@ class mazePage:
                     check_reach_goal()
 
                 def run_algorithm():
-                    nonlocal path, collected, total_treasure, process, all_process_by_limit
-                    path, collected, total_treasure, process = algorithm.chooseAlgorithm(
-                        self.algorithmChoosed, maze)
-                    print(path)
-                    # Khi thuật toán xong → gọi lại UI (phải dùng after vì đang trong thread khác)
+                    nonlocal path, collected, total_treasure, process, all_process_by_limit, maze
+                    self.stopAlgorithm = False
+
+                    if mazeCover:
+                        _maze = (maze, mazeCover)
+                    else:
+                        _maze = maze
+                        
+                    result = algorithm.chooseAlgorithm(
+                        self.algorithmChoosed, _maze, _stopRunning=lambda: self.stopAlgorithm)
+                    
+                    if not result:
+                        print("Thuật toán chưa hỗ trợ")
+                        self.timer.reset()
+                        return
+                    
+                    path, collected, total_treasure, process = result
                     self.root.after(0, lambda: on_algorithm_done())
 
                 def on_algorithm_done():
+                    if self.algorithmCbb.getValue() == "Belief state":
+                        self.maze.processDone = False
                     print(f"Bạn đã chọn thuật toán {self.algorithmChoosed}")
-                    self.maze.draw_search_process(process, path, onFinish=ProcessDone)
+                    
+                    if self.algorithmCbb.getValue() == "Partially observable":
+                        self.maze.draw_path_POS(maze, path, onFinish=ProcessDone)
+                    else:    
+                        self.maze.draw_search_process(process, path, onFinish=ProcessDone)
 
                 # Chạy thread
                 path = collected = total_treasure = process = all_process_by_limit = None
-                t = threading.Thread(target=run_algorithm)
-                t.start()
+                self.thread = threading.Thread(target=run_algorithm)
+                self.thread.start()
         else:
             print("Hãy chọn thuật toán trước bạn nhé")
             self.canvas.itemconfigure(self.bg_warning_id, state="normal")
@@ -337,9 +407,16 @@ class mazePage:
             self.root.after(50, lambda: self.root.bind("<Button-1>", hideWarning))
         
     # Hàm reset và thay đối mê cung (nếu có)
-    def resetMaze(self, changeMaze=True):
+    def resetMaze(self, changeMaze=True, resetBindMaze=True):
         self.enableStartBtn = True
+        self.stopAlgorithm = True
+        self.maze.processDone = False
+        self.maze.is_reach_goal = False
         self.timer.reset()
+        
+        if hasattr(self, "thread") and self.thread.is_alive():
+            self.thread.join(timeout=0.2)
+        
         # Hủy toàn bộ hoạt ảnh đang chạy
         if hasattr(self, "_after_ids"):
             for aid in self._after_ids:
@@ -350,17 +427,26 @@ class mazePage:
             self._after_ids.clear()
 
         self.animating = False
-        
+
         if changeMaze:
             self.mazeIndex = (self.mazeIndex + 1) % len(self.mazeArr)
-        self.draw_maze(self.mazeArr[self.mazeIndex])    
+        _maze = self.mazeArr[self.mazeIndex]
+        hideAvt = False
         
         # Kiểm tra nếu thuật toán đang chọn là belief thì ẩn avarta
         if hasattr(self, "algorithmCbb"):
             value = self.algorithmCbb.getValue()
             if value and value == "Belief state":
-                if hasattr(self, "maze") and self.maze.avatar_id:
-                    self.maze.hide_avatar()
+                hideAvt = True
+                self.maze.hide_avatar()
+                self.maze.processDone = False
+            elif value and value == "Partially observable":
+                if resetBindMaze:
+                    self.mazeCoverWall = self.blindMaze(self.mazeArr[self.mazeIndex])
+                _maze = self.mazeCoverWall
+                self.maze.processDone = False
+
+        self.draw_maze(_maze, hideAvt=hideAvt)
     
     # Nút reset
     def draw_reset(self):
@@ -375,7 +461,7 @@ class mazePage:
         )
 
     # Hàm vẽ mê cung
-    def draw_maze(self, mazeArr):
+    def draw_maze(self, mazeArr, hideAvt=False):
         if self.avtChoosed == "HACHI":
             avt = "Gallery/Hachi_Avt.png"
         elif self.avtChoosed == "CHIKAWA":
@@ -389,6 +475,9 @@ class mazePage:
             maze,
             pathAvt=avt
         )
+        
+        if hideAvt:
+            self.maze.hide_avatar()
 
     # Hàm tái cấu trúc lại mê cung về dạng chuẩn 2D list
     def processMazeStructure(self, mazeArr):
