@@ -1,81 +1,117 @@
 from collections import deque
-from heapq import heappush, heappop
 import time
 
+stopRunning = lambda: False
+
 # Chọn thuật toán
-def chooseAlgorithm(name, maze):
+def chooseAlgorithm(name, maze, _stopRunning=lambda: False):
+    global stopRunning
+    stopRunning = _stopRunning
     result = None
+    
     if name == "BFS":
-        result = bfs_collect_treasures(maze)
+        result = bfs_maze_collect_all_to_goal(maze)
     if name == "And-Or Tree":
         result = and_or_tree_search(maze)
     if name == "Belief state":
-        result = belief_state_search(maze)
-    if name == "Partially observable deterministic":
-        result = partial_observable_search(maze)
+        result = belief_state_search_bfs_to_goal(maze)
+    if name == "Partially observable":
+        result = POS_algorithm(maze)
+        path, collected = result
+        total_treasure = countAllTreasure(maze[0])
+        return path, collected, total_treasure, None
     if name == "AC-3":
         result = ac3_greedy_collect_treasures(maze)
-                
     return result
 
+def countAllTreasure(maze):
+    cnt = 0
+    # for _ in maze:
+        # print(_)
+    for i in range(len(maze)):
+        for j in range(len(maze[0])):
+            if maze[i][j] == "t":
+                cnt += 1
+    return cnt
+
 # 1. BFS
-def bfs_collect_treasures(maze):
+def bfs_maze_collect_all_to_goal(maze):
     rows, cols = len(maze), len(maze[0])
-
-    start = end = None
-    treasures = []
-    for i in range(rows):
-        for j in range(cols):
-            if maze[i][j] == "A":
-                start = (i, j)
-            elif maze[i][j] == "B":
-                end = (i, j)
-            elif maze[i][j] == "t":
-                treasures.append((i, j))
-
-    if not start or not end:
-        return None, 0, len(treasures), []
-
-    treasure_index = {pos: idx for idx, pos in enumerate(treasures)}
+    
+    start = None
+    end = None
+    treasures = set()
+    
+    for r in range(rows):
+        for c in range(cols):
+            cell = maze[r][c]
+            if cell == "A":
+                start = (r,c)
+            elif cell == "B":
+                end = (r,c)
+            elif cell == "t":
+                treasures.add((r,c))
+    
     total_treasures = len(treasures)
-    ALL = (1 << total_treasures) - 1  # bitmask của tất cả kho báu
+    if start is None or end is None:
+        return None, 0, total_treasures, []
 
-    queue = deque([(start[0], start[1], 0, [start])])  # (r, c, mask, path)
-    visited = set()
-    best_path = None
-    best_mask = 0
-    explored_order = []  # lưu thứ tự mở rộng
-
-    directions = [(1, 0), (-1, 0), (0, 1), (0, -1)]
-
+    ALL_MASK = (1 << total_treasures) - 1
+    treasure_index = {pos: idx for idx, pos in enumerate(treasures)}
+    
+    directions = [(1,0),(-1,0),(0,1),(0,-1)]
+    explored_flat = []
+    seen_explored = set()
+    
+    # BFS queue: (pos, path_so_far, mask_collected)
+    start_mask = 0
+    if start in treasure_index:
+        start_mask |= 1 << treasure_index[start]
+    
+    queue = deque([(start, [start], start_mask)])
+    visited = set([(start, start_mask)])
+    
+    final_path = None
+    final_collected = 0
+    
     while queue:
-        r, c, mask, path = queue.popleft()
-        explored_order.append((r, c))  # lưu vị trí đang mở rộng
-
-        # Nếu đang đứng trên kho báu thì cập nhật mask
-        if (r, c) in treasure_index:
-            mask |= (1 << treasure_index[(r, c)])
-
-        # Nếu đến đích
-        if (r, c) == end:
-            if mask > best_mask or (mask == best_mask and (not best_path or len(path) < len(best_path))):
-                best_path = path
-                best_mask = mask
-            if mask == ALL:  # Đã nhặt đủ tất cả kho báu → dừng luôn
-                break
-
-        state = (r, c, mask)
-        if state in visited:
-            continue
-        visited.add(state)
-
+        if stopRunning():
+            return None, 0, total_treasures, explored_flat
+        
+        pos, path_coords, mask = queue.popleft()
+        r, c = pos
+        
+        if pos not in seen_explored:
+            seen_explored.add(pos)
+            explored_flat.append(pos)
+        
+        # cập nhật mask nếu nhặt treasure
+        if pos in treasure_index:
+            mask |= 1 << treasure_index[pos]
+        
+        # chỉ cho phép về đích khi đã nhặt hết kho báu
+        if pos == end and mask == ALL_MASK:
+            final_path = path_coords
+            final_collected = total_treasures
+            break
+        
         for dr, dc in directions:
-            nr, nc = r + dr, c + dc
+            nr, nc = r+dr, c+dc
             if 0 <= nr < rows and 0 <= nc < cols and maze[nr][nc] != "*":
-                queue.append((nr, nc, mask, path + [(nr, nc)]))
-
-    collected = bin(best_mask).count("1")
-    return best_path, collected, total_treasures, explored_order
+                new_pos = (nr,nc)
+                new_mask = mask
+                if new_pos in treasure_index:
+                    new_mask |= 1 << treasure_index[new_pos]
+                key = (new_pos, new_mask)
+                if key not in visited:
+                    visited.add(key)
+                    queue.append((new_pos, path_coords + [new_pos], new_mask))
+    
+    if final_path is None:
+        # không tìm được đường đi
+        return None, 0, total_treasures, explored_flat
+    
+    return final_path, final_collected, total_treasures, explored_flat
 
 # 3. AND-OR tree search
 def and_or_tree_search(maze):
@@ -180,224 +216,201 @@ def and_or_tree_search(maze):
 
 
 # 4. Belief state search
-def belief_state_search(maze):
+def belief_state_search_bfs_to_goal(maze):
+    """
+    BFS belief state từ các vị trí '?' hoặc 'A', nhặt tối đa kho báu rồi đi đến B.
+    Trả về:
+        - path: list of (r,c) coordinates
+        - collected: số kho báu nhặt được
+        - total_treasures: tổng kho báu trong maze
+        - explored_flat: list of (r,c) đã mở rộng (flatten)
+    """
     rows, cols = len(maze), len(maze[0])
-
-    uncertain_positions, end, treasures = [], None, []
-
-    # Quét mê cung để tìm vị trí quan trọng
+    
+    start_positions = []
+    end = None
+    treasures = set()
     for i in range(rows):
         for j in range(cols):
-            c = maze[i][j]
-            if c == "?":
-                uncertain_positions.append((i, j))
-            elif c == "B":
-                end = (i, j)
-            elif c == "t":
-                treasures.append((i, j))
-            elif c == "A":
-                # Xem A như là đường trống
+            cell = maze[i][j]
+            if cell == "A":
+                # start_positions.append((i,j))
                 maze[i][j] = "."
-
-    total_treasure = len(treasures)
-    treasure_index = {p: i for i, p in enumerate(treasures)}
-    ALL_TREASURE = (1 << total_treasure) - 1
-
-    # ✅ Belief khởi đầu — tập hợp tất cả vị trí nghi ngờ
-    if not uncertain_positions:
-        return None, 0, total_treasure, []  # không có vị trí khởi đầu
-    if not end:
-        return None, 0, total_treasure, []
-
-    start_belief = frozenset(uncertain_positions)
-    start_state = (start_belief, 0)
-    queue = deque([(start_state, [])])
-    visited = set([start_state])
-    process, added = [], set()
-
-    def move_belief(belief, dx, dy):
-        """Di chuyển toàn bộ belief theo hướng (dx, dy)."""
-        new_belief = set()
-        for (x, y) in belief:
-            nx, ny = x + dx, y + dy
-            if not (0 <= nx < rows and 0 <= ny < cols) or maze[nx][ny] == "*":
-                nx, ny = x, y  # đụng tường → đứng lại
-            new_belief.add((nx, ny))
-        return frozenset(new_belief)
-
-    def record_belief(belief):
-        """Lưu các vị trí từng được agent tin là có thể đang ở."""
-        for pos in belief:
-            if pos not in added:
-                process.append(pos)
-                added.add(pos)
-
-    best_path = None
-    best_mask = 0
-
-    # BFS trên không gian belief
+            elif cell == "?":
+                start_positions.append((i,j))
+            elif cell == "B":
+                end = (i,j)
+            elif cell == "t":
+                treasures.add((i,j))
+    
+    total_treasures = len(treasures)
+    if not start_positions or end is None:
+        return None, 0, total_treasures, []
+    
+    treasure_index = {pos: idx for idx, pos in enumerate(treasures)}
+    ALL_MASK = (1 << total_treasures) - 1
+    
+    directions = [(1,0),(-1,0),(0,1),(0,-1)]
+    explored_flat = []
+    seen_explored = set()
+    
+    queue = deque()
+    visited = dict()  # key: (pos, mask) -> parent_key
+    
+    # Khởi tạo queue từ tất cả start positions
+    for sp in start_positions:
+        mask = 0
+        if sp in treasure_index:
+            mask |= 1 << treasure_index[sp]
+        queue.append((sp, mask))
+        visited[(sp, mask)] = None
+    
+    final_key = None
     while queue:
-        (belief, mask), path = queue.popleft()
-        record_belief(belief)
-
-        # Nếu tất cả belief đều nằm tại B (đích)
-        if all(pos == end for pos in belief):
-            if bin(mask).count("1") > bin(best_mask).count("1"):
-                best_mask = mask
-                best_path = [p for step in path for p in step] + list(belief)
-            if mask == ALL_TREASURE:
-                break  # ăn hết kho báu thì dừng
-
-        # Di chuyển theo 4 hướng
-        for dx, dy in [(-1,0),(1,0),(0,-1),(0,1)]:
-            new_belief = move_belief(belief, dx, dy)
-            new_mask = mask
-
-            # Kiểm tra ăn kho báu
-            for (x, y) in new_belief:
-                if maze[x][y] == "t":
-                    new_mask |= 1 << treasure_index[(x, y)]
-
-            new_state = (new_belief, new_mask)
-            if new_state == (belief, mask):
-                continue
-            if new_state not in visited:
-                visited.add(new_state)
-                queue.append((new_state, path[:] + [list(belief)]))
-
-    # ✅ Nếu không đạt kết quả hoàn hảo → trả kết quả tốt nhất
-    if best_path:
-        collected = bin(best_mask).count("1")
-        return best_path, collected, total_treasure, process
-
-    return None, 0, total_treasure, process
+        if stopRunning():
+            return None, 0, total_treasures, explored_flat
+        
+        pos, mask = queue.popleft()
+        r, c = pos
+        
+        # Lưu explored
+        if pos not in seen_explored:
+            seen_explored.add(pos)
+            explored_flat.append(pos)
+        
+        # cập nhật mask nếu nhặt treasure
+        if pos in treasure_index:
+            mask |= 1 << treasure_index[pos]
+        
+        # kiểm tra đã nhặt hết kho báu và đến B
+        if mask == ALL_MASK and pos == end:
+            final_key = (pos, mask)
+            break
+        
+        for dr, dc in directions:
+            nr, nc = r+dr, c+dc
+            if 0<=nr<rows and 0<=nc<cols and maze[nr][nc] != "*":
+                new_pos = (nr,nc)
+                new_mask = mask
+                if new_pos in treasure_index:
+                    new_mask |= 1 << treasure_index[new_pos]
+                key = (new_pos, new_mask)
+                if key not in visited:
+                    visited[key] = (pos, mask)
+                    queue.append((new_pos, new_mask))
+    
+    if final_key is None:
+        # Không tìm được đường đi
+        return None, 0, total_treasures, explored_flat
+    
+    # Tái tạo path từ parent dictionary
+    path = []
+    key = final_key
+    while key:
+        pos, mask = key
+        path.append(pos)
+        key = visited[key]
+    path.reverse()
+    
+    return path, total_treasures, total_treasures, explored_flat
 
 # 5. nhìn thấy 1 phần
-def partial_observable_search(maze, vision_range=1):
-    rows, cols = len(maze), len(maze[0])
-    start = end = None
-    treasures = []
+def POS_algorithm(_maze):
+    # Giải nén maze gốc và maze bị làm mù
+    maze = [row[:] for row in _maze[0]]        # Mê cung thật
+    mazeCover = [row[:] for row in _maze[1]]   # Mê cung mà agent nhìn thấy
+    row, col = len(maze), len(maze[0])
+    
+    def find_positions(symbol, grid):
+        return [(i, j) for i in range(row) for j in range(col) if grid[i][j] == symbol]
 
-    # --- Xác định vị trí ---
-    for i in range(rows):
-        for j in range(cols):
-            c = maze[i][j]
-            if c == "A": start = (i, j)
-            elif c == "B": end = (i, j)
-            elif c == "t": treasures.append((i, j))
+    start = find_positions("A", maze)[0]
+    goal = find_positions("B", maze)[0]
+    treasures_cover = find_positions("t", mazeCover)
 
-    total_treasure = len(treasures)
-    treasure_index = {pos: idx for idx, pos in enumerate(treasures)}
-    ALL_TREASURE = (1 << total_treasure) - 1
-
-    UNKNOWN = "?"
-    internal_map = [[UNKNOWN for _ in range(cols)] for _ in range(rows)]
-
-    def in_bounds(x, y): return 0 <= x < rows and 0 <= y < cols
-    def is_free(c): return c in (".", "A", "B", "t")
-
-    def reveal(x, y):
-        """Mở vùng tầm nhìn quanh vị trí hiện tại"""
-        for dx in range(-vision_range, vision_range + 1):
-            for dy in range(-vision_range, vision_range + 1):
-                nx, ny = x + dx, y + dy
-                if in_bounds(nx, ny):
-                    internal_map[nx][ny] = maze[nx][ny]
-
-    def neighbors_free(x, y):
-        """Chỉ sinh ra ô ĐÃ BIẾT và có thể đi được"""
-        for dx, dy in [(-1,0),(1,0),(0,-1),(0,1)]:
-            nx, ny = x + dx, y + dy
-            if in_bounds(nx, ny) and is_free(internal_map[nx][ny]):
-                yield (nx, ny)
-
-    def is_frontier(pos):
-        """Ô free, đã biết, nhưng kề với UNKNOWN → frontier thật sự"""
-        x, y = pos
-        if not is_free(internal_map[x][y]): return False
-        for dx, dy in [(-1,0),(1,0),(0,-1),(0,1)]:
-            nx, ny = x + dx, y + dy
-            if in_bounds(nx, ny) and internal_map[nx][ny] == UNKNOWN:
-                return True
-        return False
-
-    def bfs_path(src, cond):
-        """BFS chỉ đi qua vùng đã biết và free."""
-        q = deque([(src, [])])
-        seen = {src}
-        while q:
-            (x, y), path = q.popleft()
-            if cond((x, y)):
-                return path + [(x, y)]
-            for nx, ny in neighbors_free(x, y):
-                if (nx, ny) not in seen:
-                    seen.add((nx, ny))
-                    q.append(((nx, ny), path + [(x, y)]))
-        return None
-
-    # --- Vòng lặp khám phá ---
-    process = []
+    collected = 0
     path = [start]
-    collected_mask = 0
     current = start
-    reveal(*current)
 
-    max_steps = rows * cols * 20
-    steps = 0
+    # === HÀM PHỤ ===
+    def neighbors(i, j):
+        for di, dj in [(-1,0), (1,0), (0,-1), (0,1)]:
+            ni, nj = i + di, j + dj
+            if 0 <= ni < row and 0 <= nj < col:
+                yield ni, nj
 
-    while steps < max_steps:
-        steps += 1
-        process.append(current)
+    def bfs_path(start, goal):
+        """BFS trong mazeCover, nhưng kiểm tra tường thật trong maze."""
+        q = deque([start])
+        came = {start: None}
+        while q:
+            if stopRunning():
+                return None
+            cur = q.popleft()
+            if cur == goal:
+                break
+            for ni, nj in neighbors(*cur):
+                # Chỉ thêm vào hàng đợi nếu không phải tường thật
+                if (ni, nj) not in came and maze[ni][nj] != "*":
+                    came[(ni, nj)] = cur
+                    q.append((ni, nj))
+        if goal not in came:
+            return None
 
-        # Thu kho báu
-        if maze[current[0]][current[1]] == "t":
-            collected_mask |= 1 << treasure_index[(current[0], current[1])]
+        # reconstruct path
+        path = []
+        cur = goal
+        while cur:
+            path.append(cur)
+            cur = came[cur]
+        return path[::-1]
 
-        # Kết thúc khi đã đến đích và đủ kho báu
-        if current == end and collected_mask == ALL_TREASURE:
+    # === BẮT ĐẦU ===
+    while not stopRunning():
+        # Nếu còn kho báu nhìn thấy thì tìm tới gần nhất
+        if treasures_cover:
+            target = min(treasures_cover, key=lambda t: abs(t[0]-current[0]) + abs(t[1]-current[1]))
+        else:
+            target = goal
+
+        segment = bfs_path(current, target)
+        if not segment:
             break
 
-        # Cập nhật tầm nhìn
-        reveal(*current)
+        # Di chuyển từng bước
+        for pos in segment[1:]:
+            if stopRunning():
+                return path, collected
 
-        # Nếu thấy B và đã đủ kho báu → đi tới B
-        if internal_map[end[0]][end[1]] != UNKNOWN and collected_mask == ALL_TREASURE:
-            to_goal = bfs_path(current, lambda p: p == end)
-            if to_goal:
-                path.extend(to_goal[1:])
-                current = to_goal[-1]
-                continue
+            if maze[pos[0]][pos[1]] == "*":  # Gặp tường thật
+                break
 
-        # Nếu thấy kho báu chưa nhặt → BFS tới kho báu gần nhất
-        known_t = [
-            t for t in treasures
-            if internal_map[t[0]][t[1]] != UNKNOWN and not (collected_mask & (1 << treasure_index[t]))
-        ]
-        if known_t:
-            for t in known_t:
-                to_t = bfs_path(current, lambda p, t=t: p == t)
-                if to_t:
-                    path.extend(to_t[1:])
-                    current = to_t[-1]
-                    break
-            continue
+            path.append(pos)
+            current = pos
 
-        # Nếu chưa thấy B, chưa hết treasure → tìm frontier gần nhất
-        to_frontier = bfs_path(current, is_frontier)
-        if to_frontier:
-            path.extend(to_frontier[1:])
-            current = to_frontier[-1]
-            continue
+            # Quan sát 4 hướng quanh
+            for ni, nj in neighbors(*pos):
+                if maze[ni][nj] == "t" and mazeCover[ni][nj] != "t":
+                    # Phát hiện kho báu mới
+                    mazeCover[ni][nj] = "t"
+                    treasures_cover.append((ni, nj))
 
-        # Không còn gì để khám phá
-        break
+            # Nhặt kho báu nếu gặp
+            if maze[pos[0]][pos[1]] == "t":
+                collected += 1
+                maze[pos[0]][pos[1]] = "."
+                if pos in treasures_cover:
+                    treasures_cover.remove(pos)
+                mazeCover[pos[0]][pos[1]] = "."
 
-    collected = bin(collected_mask).count("1")
-    if current != end or collected_mask != ALL_TREASURE:
-        print("⚠️ Không thể tìm được đường hợp lệ tới B.")
-        return None, collected, total_treasure, process
+            if pos == goal:
+                return path, collected
 
-    return path, collected, total_treasure, process
+        # Nếu đã đến đích và không còn kho báu thấy được
+        if not treasures_cover and current == goal:
+            break
+
+    return path, collected
 
 # 6. AC-3
 def ac3_greedy_collect_treasures(maze, timeout=1.0):
@@ -490,3 +503,50 @@ def ac3_greedy_collect_treasures(maze, timeout=1.0):
         pass
 
     return full_path, collected, total_treasure, process
+
+if __name__ == "__main__":
+    maze = [
+                "*  *   *   *   *   *   *   *   *   *   *   *   *   *   *   *   *",
+                "*  .   *   ?   .   .   .   .   .   .   .   .   *   .   .   .   *",
+                "*  .   *   *   *   .   *   *   *   *   *   .   *   .   *   *   *",
+                "*  .   .   .   .   .   *   .   *   .   .   .   *   .   .   .   *",
+                "*  *   *   *   *   *   *   .   *   .   *   *   *   .   *   .   *",
+                "*  .   .   .   .   .   *   .   *   .   .   .   *   .   *   .   *",
+                "*  .   *   *   *   .   *   .   *   *   *   .   *   .   *   .   *",
+                "A  ?   .   .   *   .   .   .   .   .   *   .   *   .   *   .   B",
+                "*  .   *   .   *   .   *   *   *   *   *   .   *   *   *   .   *",
+                "*  .   *   .   *   .   *   .   .   .   *   .   .   .   *   .   *",
+                "*  .   *   .   *   .   *   .   *   .   *   *   *   .   *   .   *",
+                "*  .   *   .   *   .   *   .   *   .   .   .   *   .   *   .   *",
+                "*  .   *   .   *   *   *   .   *   *   *   .   *   .   *   .   *",
+                "*  .   *   .   .   .   .   .   .   .   *   .   .   .   .   t   *",
+                "*  *   *   *   *   *   *   *   *   *   *   *   *   *   *   *   *"
+    ]
+    
+    def coverWall_inMaze(maze):
+        maze_copy = [list(row) for row in maze]  # mỗi dòng thành list để có thể sửa
+        height = len(maze_copy)
+        width = len(maze_copy[0])
+        for i in range(height):
+            for j in range(width):
+                if (maze_copy[i][j] == "*" or maze_copy[i][j] == "?") and i != 0 and i != height-1 and j != 0 and j != width-1:
+                    maze_copy[i][j] = "."
+        maze_copy = ["\t".join(row) for row in maze_copy]
+        return maze_copy
+    
+    def processMazeStructure(mazeArr):
+        processed = []
+        for line in mazeArr:
+            row = line.strip().split()
+            processed.append(row)
+        return processed
+    
+    mz = processMazeStructure(coverWall_inMaze(maze))
+    mx = processMazeStructure(maze)
+    # for i in processMazeStructure(maze):
+    for i in mx:
+        print(i)
+    
+    a, b = POS_algorithm((mx, mz))
+    print(a)
+    print(countAllTreasure(mx))
