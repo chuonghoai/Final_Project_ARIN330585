@@ -951,6 +951,8 @@ def ac3_greedy_collect_treasures(maze, timeout=1.0):
 
     return full_path, collected, total_treasure, process
 
+
+
 if __name__ == "__main__":
     maze = [
                 "*  *   *   *   *   *   *   *   *   *   *   *   *   *   *   *   *",
