@@ -71,7 +71,7 @@ class mazePage:
                 "*	*	*	.	*	*	*	.	*	.	*	.	*	.	*	.	*",
                 "*	.	.	.	.	.	*	.	*	.	.	.	*	.	.	.	*",
                 "*	*	*	*	*	*	*	.	*	*	*	*	*	*	*	.	*",
-                "*	.	.	.	t	.	.	.	*	t	.	.	.	.	.	?	*",
+                "*	.	.	.	t	.	.	.	*	.	.	.	.	.	.	?	*",
                 "*	A	*	*	*	*	*	*	*	*	*	*	*	*	*	B	*"
             ],
             [
@@ -88,7 +88,7 @@ class mazePage:
                 "*  .   *   .   *   .   *   .   *   .   *   *   *   .   *   .   *",
                 "*  .   *   .   *   .   *   .   *   .   .   .   *   .   *   .   *",
                 "*  .   *   .   *   *   *   .   *   *   *   .   *   .   *   .   *",
-                "*  .   *   .   .   .   .   .   .   .   *   .   .   .   .   t   *",
+                "*  .   .   .   .   .   .   .   .   .   *   .   .   .   .   t   *",
                 "*  *   *   *   *   *   *   *   *   *   *   *   *   *   *   *   *"
             ],
             [
@@ -230,7 +230,9 @@ class mazePage:
         
     # Vẽ combo box chọn thuật toán
     def draw_cbbox(self):
-        values = ["BFS", "Greedy", "A*", "IDL", "Simulated Annealing", "Forward Checking", "And-Or Tree", "Belief state", "Partially observable", "AC-3", "DFS", "UCS", "Beam Search", "Backtracking"]
+        values = ["BFS", "Greedy", "A*", "IDL", "Simulated Annealing", "Forward Checking", 
+                  "And-Or Tree", "Belief state", "Partially observable", "AC-3", "DFS", "Hill Climbing",
+                  "UCS", "Beam Search", "Backtracking"]
         self.algorithmCbb = ComboBoxObj(self.canvas)
         self.algorithmCbb.createComboBox(
             self.width - 185, self.height//2 - 200,
@@ -346,20 +348,20 @@ class mazePage:
                     if self.maze.processDone and hasattr(self, "maze"):
                         self.maze.processDone = False
                         self.maze.show_avatar()
-                    
-                    if not path or path is None:
-                        print("Không tìm được đường đi")
-                        self.canvas.itemconfigure(self.bgCantFindPath_id, state="normal")
-                        self.canvas.tag_raise(self.bgCantFindPath_id)
-                        self.cantFindPath_after = self.root.after(
-                            3000, lambda: self.canvas.itemconfigure(self.bgCantFindPath_id, state="hidden"))
-                        self.root.after(50, lambda: self.root.bind("<Button-1>", hideWarning))
-                        return
 
                     # Kiểm tra nhân vật đã đến đích chưa
                     def check_reach_goal():
                         if self.maze.is_reach_goal:
-                            self.draw_congratulation_reachGoal(collected, total_treasure)
+                            if not reachedGoal and self.algorithmCbb.getValue() == "Hill Climbing" and path:
+                                print("Không tìm được đường đi")
+                                self.canvas.itemconfigure(self.bgCantFindPath_id, state="normal")
+                                self.canvas.tag_raise(self.bgCantFindPath_id)
+                                self.cantFindPath_after = self.root.after(
+                                    3000, lambda: self.canvas.itemconfigure(self.bgCantFindPath_id, state="hidden"))
+                                self.root.after(50, lambda: self.root.bind("<Button-1>", hideWarning))
+                                return
+                            else:
+                                self.draw_congratulation_reachGoal(collected, total_treasure)
                             self.enableStartBtn = True
                         else:
                             after_id = self.root.after(100, check_reach_goal)
@@ -367,7 +369,7 @@ class mazePage:
                     check_reach_goal()
 
                 def run_algorithm():
-                    nonlocal path, collected, total_treasure, process, all_process_by_limit, maze
+                    nonlocal path, collected, total_treasure, process, all_process_by_limit, maze, reachedGoal
                     self.stopAlgorithm = False
 
                     if mazeCover:
@@ -382,8 +384,11 @@ class mazePage:
                         print("Thuật toán chưa hỗ trợ")
                         self.timer.reset()
                         return
+                    if self.algorithmCbb.getValue() == "Hill Climbing":
+                        path, collected, total_treasure, process, reachedGoal = result
+                    else:
+                        path, collected, total_treasure, process = result
                     
-                    path, collected, total_treasure, process = result
                     self.root.after(0, lambda: on_algorithm_done())
 
                 def on_algorithm_done():
@@ -398,6 +403,7 @@ class mazePage:
 
                 # Chạy thread
                 path = collected = total_treasure = process = all_process_by_limit = None
+                reachedGoal = None
                 self.thread = threading.Thread(target=run_algorithm)
                 self.thread.start()
         else:

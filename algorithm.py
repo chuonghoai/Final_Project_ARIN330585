@@ -44,6 +44,9 @@ def chooseAlgorithm(name, maze, _stopRunning=lambda: False):
         result = beam_search_maze_collect_all_to_goal(maze)
     if name == "Backtracking":
         result = backtracking_maze_collect_all_to_goal(maze)
+    if name == "Hill Climbing":
+        result = hill_climbing_maze_real_v4(maze)
+        return result
     return result
 
 def countAllTreasure(maze):
@@ -55,6 +58,7 @@ def countAllTreasure(maze):
             if maze[i][j] == "t":
                 cnt += 1
     return cnt
+
 # 1. BFS
 def bfs_maze_collect_all_to_goal(maze):
     rows, cols = len(maze), len(maze[0])
@@ -569,6 +573,66 @@ def forward_checking_multi_goal_maze(maze):
         return None, collected, total_treasures, explored_flat
 
     return full_path, collected, total_treasures, explored_flat
+    total_treasures = len(treasures)
+    if start is None or end is None:
+        return None, 0, total_treasures, []
+
+    ALL_MASK = (1 << total_treasures) - 1
+    treasure_index = {pos: idx for idx, pos in enumerate(treasures)}
+    
+    directions = [(1,0),(-1,0),(0,1),(0,-1)]
+    explored_flat = []
+    seen_explored = set()
+    
+    # BFS queue: (pos, path_so_far, mask_collected)
+    start_mask = 0
+    if start in treasure_index:
+        start_mask |= 1 << treasure_index[start]
+    
+    queue = deque([(start, [start], start_mask)])
+    visited = set([(start, start_mask)])
+    
+    final_path = None
+    final_collected = 0
+    
+    while queue:
+        if stopRunning():
+            return None, 0, total_treasures, explored_flat
+        
+        pos, path_coords, mask = queue.popleft()
+        r, c = pos
+        
+        if pos not in seen_explored:
+            seen_explored.add(pos)
+            explored_flat.append(pos)
+        
+        # cập nhật mask nếu nhặt treasure
+        if pos in treasure_index:
+            mask |= 1 << treasure_index[pos]
+        
+        # chỉ cho phép về đích khi đã nhặt hết kho báu
+        if pos == end and mask == ALL_MASK:
+            final_path = path_coords
+            final_collected = total_treasures
+            break
+        
+        for dr, dc in directions:
+            nr, nc = r+dr, c+dc
+            if 0 <= nr < rows and 0 <= nc < cols and maze[nr][nc] != "*":
+                new_pos = (nr,nc)
+                new_mask = mask
+                if new_pos in treasure_index:
+                    new_mask |= 1 << treasure_index[new_pos]
+                key = (new_pos, new_mask)
+                if key not in visited:
+                    visited.add(key)
+                    queue.append((new_pos, path_coords + [new_pos], new_mask))
+    
+    if final_path is None:
+        # không tìm được đường đi
+        return None, 0, total_treasures, explored_flat
+    
+    return final_path, final_collected, total_treasures, explored_flat
 
 # 3. AND-OR tree search
 def and_or_tree_search(maze):
@@ -670,7 +734,6 @@ def and_or_tree_search(maze):
     collected = bin(collected_mask).count("1")
 
     return plan, collected, total_treasure, process
-
 
 # 4. Belief state search
 def belief_state_search_bfs_to_goal(maze):
@@ -1479,3 +1542,128 @@ if __name__ == "__main__":
     a, b = POS_algorithm((mx, mz))
     print(a)
     print(countAllTreasure(mx))
+# 7. hill climbing
+def hill_climbing_maze_real_v4(maze, max_steps=10000):
+    directions = [(-1,0),(1,0),(0,-1),(0,1)]
+    n, m = len(maze), len(maze[0])
+
+    def in_bounds(r, c):
+        return 0 <= r < n and 0 <= c < m and maze[r][c] != '*'
+
+    # --- Xác định vị trí ---
+    start, goal, treasures = None, None, []
+    total_treasures = 0
+    for i in range(n):
+        for j in range(m):
+            cell = maze[i][j]
+            if cell == 'A': start = (i, j)
+            elif cell == 'B': goal = (i, j)
+            elif cell.lower() == 't': 
+                treasures.append((i, j))
+                total_treasures += 1
+
+    def heuristic(a, b):
+        return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+    # --- Hill Climbing đơn pha ---
+    def hill_climb_path(start, target):
+        current = start
+        path = [current]
+        explored = [current]
+        steps = 0
+
+        while steps < max_steps:
+            steps += 1
+            r, c = current
+            neighbors = []
+
+            for dr, dc in directions:
+                nr, nc = r + dr, c + dc
+                if in_bounds(nr, nc):
+                    h = heuristic((nr, nc), target)
+                    neighbors.append((h, (nr, nc)))
+
+            if not neighbors:
+                break
+
+            best_h = min(h for h, _ in neighbors)
+            best_moves = [(h, pos) for h, pos in neighbors if h == best_h]
+            curr_h = heuristic(current, target)
+
+            if best_h < curr_h:
+                moved = False
+                for _, best_pos in best_moves:
+                    if best_pos not in path:  # tránh vòng lặp
+                        current = best_pos
+                        path.append(current)
+                        explored.append(current)
+                        moved = True
+                        break
+                if not moved:
+                    return path, explored, False
+
+                if current == target:
+                    return path, explored, True
+            else:
+                return path, explored, False
+
+        return path, explored, False
+
+    # --- Hill Climbing đa pha linh hoạt ---
+    full_path = [start]
+    process = [start]
+    collected = []
+    current = start
+    remaining = treasures[:]
+    reachedGoal = False
+
+    while True:
+        targets = list(remaining)
+        if goal not in targets:
+            targets.append(goal)
+
+        best_sub_path = []
+        best_explored = []
+        best_target = None
+        found_path = False
+
+        # --- thử đến từng target ---
+        for target in targets:
+            if stopRunning():
+                return None, 0, total_treasures, process, False
+            
+            sub_path, explored, reached = hill_climb_path(current, target)
+            process += explored[1:]
+
+            # Nếu đi được xa hơn path cũ thì lưu lại
+            if len(sub_path) > len(best_sub_path):
+                best_sub_path = sub_path
+                best_explored = explored
+                best_target = target
+
+            if reached:
+                # đạt đích target này
+                full_path += sub_path[1:]
+                current = target
+                found_path = True
+
+                if target in remaining:
+                    remaining.remove(target)
+                    collected.append(target)
+
+                if target == goal:
+                    reachedGoal = True
+                break  # sang vòng while tiếp theo
+
+        # --- nếu không có target nào tới được ---
+        if not found_path:
+            if best_sub_path and len(best_sub_path) > 1:
+                # chỉ nối path dài nhất trong các đường bị kẹt
+                full_path += best_sub_path[1:]
+                current = best_sub_path[-1]
+            break
+
+        if reachedGoal:
+            break
+
+    return full_path, collected, total_treasures, process, reachedGoal
