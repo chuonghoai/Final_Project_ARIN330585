@@ -349,15 +349,11 @@ def idl_pure_maze_collect_all_to_goal(maze, max_depth=1000):
     return final_path, collected, total_treasures, explored_flat
 
 # 4. Simulated Annealing
-def simulated_annealing_maze_collect_all_to_goal(
-        maze, T0=None, alpha=0.995, max_iters=8000, seed=None):
-    import random, math
-    from collections import deque
-
-    rng = random.Random(seed)
+def simulated_annealing_maze_collect_all_to_goal(maze):
     rows, cols = len(maze), len(maze[0])
     start = end = None
     treasures = []
+
     for r in range(rows):
         for c in range(cols):
             cell = maze[r][c]
@@ -369,9 +365,13 @@ def simulated_annealing_maze_collect_all_to_goal(
                 treasures.append((r, c))
 
     total_treasures = len(treasures)
-    if not start or not end:
+    if start is None or end is None:
         return None, 0, total_treasures, []
-    ##############
+
+    rng = random.Random()
+    explored_flat = []
+
+    # bfs để tìm đường đi giữa hai điểm
     def bfs_path(src, dst):
         q = deque([src])
         parent = {src: None}
@@ -393,11 +393,12 @@ def simulated_annealing_maze_collect_all_to_goal(
             path.append(cur)
             cur = parent[cur]
         return path[::-1]
+    #tính khoảng cách giữa các điểm
     nodes = [start] + treasures + [end]
     K = len(nodes)
     dist = [[math.inf]*K for _ in range(K)]
     path_cache = {}
-    ok = True
+
     for i in range(K):
         for j in range(K):
             if i == j:
@@ -405,17 +406,12 @@ def simulated_annealing_maze_collect_all_to_goal(
             else:
                 p = bfs_path(nodes[i], nodes[j])
                 if not p:
-                    ok = False
-                    break
-                dist[i][j] = len(p)-1
+                    return None, 0, total_treasures, []
+                dist[i][j] = len(p) - 1
                 path_cache[(i,j)] = p
-        if not ok:
-            break
-    if not ok:
-        return None, 0, total_treasures, []
 
     m = len(treasures)
-    treasure_idx = list(range(1, 1+m)) 
+    treasure_idx = list(range(1, 1+m))
 
     def route_cost(order):
         if not order:
@@ -425,28 +421,25 @@ def simulated_annealing_maze_collect_all_to_goal(
             c += dist[order[i]][order[i+1]]
         c += dist[order[-1]][m+1]
         return c
-
+    #bđ chạy SA
     curr = treasure_idx[:]
     rng.shuffle(curr)
     curr_cost = route_cost(curr)
     best, best_cost = curr[:], curr_cost
 
-    if T0 is None:
-        T = max(5.0, 0.25 * rows * cols)
-    else:
-        T = float(T0)
+    T = max(5.0, 0.25 * rows * cols)
+    alpha = 0.995
+    max_iters = 8000
 
-    explored_flat = []
-    for k in range(1, max_iters+1):
+    for _ in range(max_iters):
         if stopRunning():
             break
         cand = curr[:]
         if len(cand) >= 2:
+            i, j = sorted(rng.sample(range(len(cand)), 2))
             if rng.random() < 0.5:
-                i, j = sorted(rng.sample(range(len(cand)), 2))
                 cand[i], cand[j] = cand[j], cand[i]
             else:
-                i, j = sorted(rng.sample(range(len(cand)), 2))
                 cand[i:j+1] = reversed(cand[i:j+1])
 
         cand_cost = route_cost(cand)
@@ -455,12 +448,15 @@ def simulated_annealing_maze_collect_all_to_goal(
             curr, curr_cost = cand, cand_cost
             if curr_cost < best_cost:
                 best, best_cost = curr[:], curr_cost
+
         T *= alpha
         if T < 1e-6:
             break
+
     order = best
     waypoints = [0] + order + [m+1]
     full_path = []
+
     for i in range(len(waypoints)-1):
         a, b = waypoints[i], waypoints[i+1]
         seg = path_cache[(a,b)]
@@ -470,10 +466,11 @@ def simulated_annealing_maze_collect_all_to_goal(
             full_path.extend(seg[1:])
         explored_flat.extend(seg)
 
-    return full_path, len(treasures), total_treasures, explored_flat
+    collected = total_treasures
+    return full_path, collected, total_treasures, explored_flat
 
 # 5. Forward Checking
-def forward_checking_multi_goal_maze(maze, time_limit=6.0):
+def forward_checking_multi_goal_maze(maze):
 
     rows, cols = len(maze), len(maze[0])
     start = end = None
@@ -481,15 +478,16 @@ def forward_checking_multi_goal_maze(maze, time_limit=6.0):
 
     for r in range(rows):
         for c in range(cols):
-            if maze[r][c] == "A":
+            cell = maze[r][c]
+            if cell == "A":
                 start = (r, c)
-            elif maze[r][c] == "B":
+            elif cell == "B":
                 end = (r, c)
-            elif maze[r][c] == "t":
+            elif cell == "t":
                 treasures.append((r, c))
 
     total_treasures = len(treasures)
-    if not start or not end:
+    if start is None or end is None:
         return None, 0, total_treasures, []
 
     explored_flat = []
@@ -497,14 +495,16 @@ def forward_checking_multi_goal_maze(maze, time_limit=6.0):
     current = start
     full_path = [start]
     start_time = time.time()
+    time_limit = 6.0
 
-    def manhattan(a, b): 
+    def heuristic(a, b): 
         return abs(a[0] - b[0]) + abs(a[1] - b[1])
+    #dfs với forward checking
     def forward_checking_path(src, dst):
         best_path = None
-        seen = set()
 
         def reachable(p):
+            "Kiểm tra xem node có còn khả năng đi tiếp (pruning)."
             q = deque([p])
             vis = {p}
             while q:
@@ -528,23 +528,20 @@ def forward_checking_multi_goal_maze(maze, time_limit=6.0):
                 best_path = path[:]
                 return
             for dr, dc in sorted([(1,0),(-1,0),(0,1),(0,-1)],
-                                 key=lambda d: manhattan((pos[0]+d[0],pos[1]+d[1]), dst)):
+                                 key=lambda d: heuristic((pos[0]+d[0],pos[1]+d[1]), dst)):
                 nr, nc = pos[0]+dr, pos[1]+dc
-                nxt = (nr,nc)
+                nxt = (nr, nc)
                 if 0 <= nr < rows and 0 <= nc < cols and maze[nr][nc] != "*" and nxt not in path:
-                    # Forward checking propagation
                     if reachable(nxt):
-                        dfs(nxt, path+[nxt])
+                        dfs(nxt, path + [nxt])
                     if best_path is not None:
                         return
 
         dfs(src, [src])
         return best_path
-
-    # ---------- Vòng lặp từng kho báu ----------
+    # Lặp qua từng kho báu
     while treasures and time.time() - start_time < time_limit:
-        # chọn kho báu gần nhất theo Manhattan
-        treasures.sort(key=lambda t: manhattan(current, t))
+        treasures.sort(key=lambda t: heuristic(current, t))
         target = treasures.pop(0)
 
         seg = forward_checking_path(current, target)
@@ -554,8 +551,7 @@ def forward_checking_multi_goal_maze(maze, time_limit=6.0):
         collected += 1
         current = target
         maze[current[0]][current[1]] = "."  # ăn kho báu
-
-    # ---------- Cuối cùng: tới đích ----------
+    # Cuối cùng đi đến B
     seg = forward_checking_path(current, end)
     if seg:
         full_path.extend(seg[1:])
