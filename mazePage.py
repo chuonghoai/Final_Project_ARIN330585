@@ -268,6 +268,7 @@ class mazePage:
     
     # Kiểm tra khi thay đổi thuật toán
     def on_algorithm_change(self, value):
+        self.resetMaze(changeMaze=False)
         if not (hasattr(self, "maze") and self.maze.avatar_id):
             return
 
