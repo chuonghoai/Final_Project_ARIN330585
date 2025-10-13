@@ -1,4 +1,6 @@
 from collections import deque
+from heapq import heappush, heappop
+import random, math
 import time
 
 stopRunning = lambda: False
@@ -11,6 +13,16 @@ def chooseAlgorithm(name, maze, _stopRunning=lambda: False):
     
     if name == "BFS":
         result = bfs_maze_collect_all_to_goal(maze)
+    if name == "Greedy":
+        result = greedy_maze_collect_all_to_goal(maze)
+    if name == "A*":
+        result = a_star_maze_collect_all_to_goal(maze)
+    if name == "IDL":
+        result = idl_pure_maze_collect_all_to_goal(maze, max_depth=100)
+    if name == "Simulated Annealing":
+        result = simulated_annealing_maze_collect_all_to_goal(maze)
+    if name == "Forward Checking":
+        result = forward_checking_multi_goal_maze(maze)
     if name == "And-Or Tree":
         result = and_or_tree_search(maze)
     if name == "Belief state":
@@ -33,7 +45,6 @@ def countAllTreasure(maze):
             if maze[i][j] == "t":
                 cnt += 1
     return cnt
-
 # 1. BFS
 def bfs_maze_collect_all_to_goal(maze):
     rows, cols = len(maze), len(maze[0])
@@ -112,6 +123,446 @@ def bfs_maze_collect_all_to_goal(maze):
         return None, 0, total_treasures, explored_flat
     
     return final_path, final_collected, total_treasures, explored_flat
+
+# 2. A* Search
+def a_star_maze_collect_all_to_goal(maze):
+    rows, cols = len(maze), len(maze[0])
+    start = end = None
+    treasures = []
+
+    for r in range(rows):
+        for c in range(cols):
+            cell = maze[r][c]
+            if cell == "A":
+                start = (r, c)
+            elif cell == "B":
+                end = (r, c)
+            elif cell == "t":
+                treasures.append((r, c))
+
+    total_treasures = len(treasures)
+    if start is None or end is None:
+        return None, 0, total_treasures, []
+
+    explored_flat = []
+    seen_explored = set()
+
+    def heuristic(a, b):
+        return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+    def astar_path(src, goal):
+        pq = []
+        heappush(pq, (heuristic(src, goal), 0, src))
+        came_from = {src: None}
+        gscore = {src: 0}
+        explored = []
+
+        while pq:
+            f, g, current = heappop(pq)
+            explored.append(current)
+            if current == goal:
+                path = []
+                while current is not None:
+                    path.append(current)
+                    current = came_from[current]
+                return path[::-1], explored, g
+            r, c = current
+            for dr, dc in [(1,0),(-1,0),(0,1),(0,-1)]:
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < rows and 0 <= nc < cols and maze[nr][nc] != "*":
+                    neighbor = (nr, nc)
+                    g_new = g + 1
+                    f_new = g_new + heuristic(neighbor, goal)
+                    if g_new < gscore.get(neighbor, float("inf")):
+                        came_from[neighbor] = current
+                        gscore[neighbor] = g_new
+                        heappush(pq, (f_new, g_new, neighbor))
+        return None, explored, None
+
+    current = start
+    final_path = [start]
+    final_collected = 0
+    total_cost = 0
+
+    while treasures:
+        treasures.sort(key=lambda t: heuristic(current, t))
+        target = treasures.pop(0)
+        path_segment, explored, cost_segment = astar_path(current, target)
+        explored_flat.extend(explored)
+        if not path_segment:
+            return None, final_collected, total_treasures, explored_flat
+        final_path.extend(path_segment[1:])
+        current = target
+        final_collected += 1
+        if cost_segment:
+            total_cost += cost_segment
+
+    path_to_end, explored, cost_to_end = astar_path(current, end)
+    explored_flat.extend(explored)
+    if not path_to_end:
+        return None, final_collected, total_treasures, explored_flat
+    final_path.extend(path_to_end[1:])
+    if cost_to_end:
+        total_cost += cost_to_end
+
+    return final_path, final_collected, total_treasures, explored_flat
+# 3. Greedy Search
+def greedy_maze_collect_all_to_goal(maze):
+    rows, cols = len(maze), len(maze[0])
+    start = end = None
+    treasures = []
+
+    for r in range(rows):
+        for c in range(cols):
+            cell = maze[r][c]
+            if cell == "A":
+                start = (r, c)
+            elif cell == "B":
+                end = (r, c)
+            elif cell == "t":
+                treasures.append((r, c))
+
+    total_treasures = len(treasures)
+    if start is None or end is None:
+        return None, 0, total_treasures, []
+
+    explored_flat = []
+    def heuristic(a, b):
+        return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+    def greedy_path(src, goal):
+        pq = []
+        heappush(pq, (heuristic(src, goal), src))
+        came_from = {src: None}
+        explored = []
+        while pq:
+            h, current = heappop(pq)
+            explored.append(current)
+            if current == goal:
+                path = []
+                while current is not None:
+                    path.append(current)
+                    current = came_from[current]
+                return path[::-1], explored
+            r, c = current
+            for dr, dc in [(1,0),(-1,0),(0,1),(0,-1)]:
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < rows and 0 <= nc < cols and maze[nr][nc] != "*":
+                    neighbor = (nr, nc)
+                    if neighbor not in came_from:
+                        came_from[neighbor] = current
+                        heappush(pq, (heuristic(neighbor, goal), neighbor))
+        return None, explored
+
+    current = start
+    final_path = [start]
+    final_collected = 0
+
+    while treasures:
+        treasures.sort(key=lambda t: heuristic(current, t))
+        target = treasures.pop(0)
+        path_segment, explored = greedy_path(current, target)
+        explored_flat.extend(explored)
+        if not path_segment:
+            return None, final_collected, total_treasures, explored_flat
+        final_path.extend(path_segment[1:])
+        current = target
+        final_collected += 1
+
+    path_to_end, explored = greedy_path(current, end)
+    explored_flat.extend(explored)
+    if not path_to_end:
+        return None, final_collected, total_treasures, explored_flat
+    final_path.extend(path_to_end[1:])
+
+    return final_path, final_collected, total_treasures, explored_flat
+
+# 4. IDL Search
+def idl_pure_maze_collect_all_to_goal(maze, max_depth=1000):
+    rows, cols = len(maze), len(maze[0])
+    start = end = None
+    treasures = []
+
+    for r in range(rows): 
+        for c in range(cols):
+            if maze[r][c] == "A":
+                start = (r, c)
+            elif maze[r][c] == "B":
+                end = (r, c)
+            elif maze[r][c] == "t":
+                treasures.append((r, c))
+
+    total_treasures = len(treasures)
+    if start is None or end is None:
+        return None, 0, total_treasures, []
+
+    explored_flat = []
+    seen_explored = set()
+    directions = [(1,0), (-1,0), (0,1), (0,-1)]
+
+    def depth_limited_dfs(src, goal, limit):
+        stack = [(src, [src], 0)]
+        local_visited = set()
+        while stack:
+            pos, path, depth = stack.pop()
+            if pos not in local_visited:
+                local_visited.add(pos)
+                if pos not in seen_explored:
+                    seen_explored.add(pos)
+                    explored_flat.append(pos)
+            if pos == goal:
+                return path
+            if depth < limit:
+                r, c = pos
+                for dr, dc in directions:
+                    nr, nc = r+dr, c+dc
+                    if 0 <= nr < rows and 0 <= nc < cols and maze[nr][nc] != "*":
+                        nxt = (nr, nc)
+                        if nxt not in path:
+                            stack.append((nxt, path+[nxt], depth+1))
+        return None
+
+    def iterative_deepening(src, goal):
+        for limit in range(1, max_depth+1):
+            result = depth_limited_dfs(src, goal, limit)
+            if result:
+                return result
+        return None
+
+    current = start
+    collected = 0
+    final_path = [start]
+
+    while treasures:
+        target = treasures.pop(0)
+        path = iterative_deepening(current, target)
+        if not path:
+            continue
+        current = target
+        collected += 1
+        final_path.extend(path[1:])
+
+    path_to_end = iterative_deepening(current, end)
+    if path_to_end:
+        final_path.extend(path_to_end[1:])
+
+    return final_path, collected, total_treasures, explored_flat
+
+# 4. Simulated Annealing
+def simulated_annealing_maze_collect_all_to_goal(
+        maze, T0=None, alpha=0.995, max_iters=8000, seed=None):
+    import random, math
+    from collections import deque
+
+    rng = random.Random(seed)
+    rows, cols = len(maze), len(maze[0])
+    start = end = None
+    treasures = []
+    for r in range(rows):
+        for c in range(cols):
+            cell = maze[r][c]
+            if cell == "A":
+                start = (r, c)
+            elif cell == "B":
+                end = (r, c)
+            elif cell == "t":
+                treasures.append((r, c))
+
+    total_treasures = len(treasures)
+    if not start or not end:
+        return None, 0, total_treasures, []
+    ##############
+    def bfs_path(src, dst):
+        q = deque([src])
+        parent = {src: None}
+        while q:
+            u = q.popleft()
+            if u == dst:
+                break
+            ur, uc = u
+            for dr, dc in [(1,0),(-1,0),(0,1),(0,-1)]:
+                vr, vc = ur+dr, uc+dc
+                if 0 <= vr < rows and 0 <= vc < cols and maze[vr][vc] != "*" and (vr,vc) not in parent:
+                    parent[(vr,vc)] = u
+                    q.append((vr,vc))
+        if dst not in parent:
+            return None
+        path = []
+        cur = dst
+        while cur is not None:
+            path.append(cur)
+            cur = parent[cur]
+        return path[::-1]
+    nodes = [start] + treasures + [end]
+    K = len(nodes)
+    dist = [[math.inf]*K for _ in range(K)]
+    path_cache = {}
+    ok = True
+    for i in range(K):
+        for j in range(K):
+            if i == j:
+                dist[i][j] = 0
+            else:
+                p = bfs_path(nodes[i], nodes[j])
+                if not p:
+                    ok = False
+                    break
+                dist[i][j] = len(p)-1
+                path_cache[(i,j)] = p
+        if not ok:
+            break
+    if not ok:
+        return None, 0, total_treasures, []
+
+    m = len(treasures)
+    treasure_idx = list(range(1, 1+m)) 
+
+    def route_cost(order):
+        if not order:
+            return dist[0][m+1]
+        c = dist[0][order[0]]
+        for i in range(len(order)-1):
+            c += dist[order[i]][order[i+1]]
+        c += dist[order[-1]][m+1]
+        return c
+
+    curr = treasure_idx[:]
+    rng.shuffle(curr)
+    curr_cost = route_cost(curr)
+    best, best_cost = curr[:], curr_cost
+
+    if T0 is None:
+        T = max(5.0, 0.25 * rows * cols)
+    else:
+        T = float(T0)
+
+    explored_flat = []
+    for k in range(1, max_iters+1):
+        if stopRunning():
+            break
+        cand = curr[:]
+        if len(cand) >= 2:
+            if rng.random() < 0.5:
+                i, j = sorted(rng.sample(range(len(cand)), 2))
+                cand[i], cand[j] = cand[j], cand[i]
+            else:
+                i, j = sorted(rng.sample(range(len(cand)), 2))
+                cand[i:j+1] = reversed(cand[i:j+1])
+
+        cand_cost = route_cost(cand)
+        delta = cand_cost - curr_cost
+        if delta <= 0 or rng.random() < math.exp(-delta / T):
+            curr, curr_cost = cand, cand_cost
+            if curr_cost < best_cost:
+                best, best_cost = curr[:], curr_cost
+        T *= alpha
+        if T < 1e-6:
+            break
+    order = best
+    waypoints = [0] + order + [m+1]
+    full_path = []
+    for i in range(len(waypoints)-1):
+        a, b = waypoints[i], waypoints[i+1]
+        seg = path_cache[(a,b)]
+        if i == 0:
+            full_path.extend(seg)
+        else:
+            full_path.extend(seg[1:])
+        explored_flat.extend(seg)
+
+    return full_path, len(treasures), total_treasures, explored_flat
+
+# 5. Forward Checking
+def forward_checking_multi_goal_maze(maze, time_limit=6.0):
+
+    rows, cols = len(maze), len(maze[0])
+    start = end = None
+    treasures = []
+
+    for r in range(rows):
+        for c in range(cols):
+            if maze[r][c] == "A":
+                start = (r, c)
+            elif maze[r][c] == "B":
+                end = (r, c)
+            elif maze[r][c] == "t":
+                treasures.append((r, c))
+
+    total_treasures = len(treasures)
+    if not start or not end:
+        return None, 0, total_treasures, []
+
+    explored_flat = []
+    collected = 0
+    current = start
+    full_path = [start]
+    start_time = time.time()
+
+    def manhattan(a, b): 
+        return abs(a[0] - b[0]) + abs(a[1] - b[1])
+    def forward_checking_path(src, dst):
+        best_path = None
+        seen = set()
+
+        def reachable(p):
+            q = deque([p])
+            vis = {p}
+            while q:
+                r, c = q.popleft()
+                if maze[r][c] in (".", "t", "B"):
+                    return True
+                for dr, dc in [(1,0),(-1,0),(0,1),(0,-1)]:
+                    nr, nc = r+dr, c+dc
+                    if 0 <= nr < rows and 0 <= nc < cols and maze[nr][nc] != "*" and (nr,nc) not in vis:
+                        vis.add((nr,nc))
+                        q.append((nr,nc))
+            return False
+
+        def dfs(pos, path):
+            nonlocal best_path
+            if time.time() - start_time > time_limit or stopRunning():
+                return
+            if pos not in explored_flat:
+                explored_flat.append(pos)
+            if pos == dst:
+                best_path = path[:]
+                return
+            for dr, dc in sorted([(1,0),(-1,0),(0,1),(0,-1)],
+                                 key=lambda d: manhattan((pos[0]+d[0],pos[1]+d[1]), dst)):
+                nr, nc = pos[0]+dr, pos[1]+dc
+                nxt = (nr,nc)
+                if 0 <= nr < rows and 0 <= nc < cols and maze[nr][nc] != "*" and nxt not in path:
+                    # Forward checking propagation
+                    if reachable(nxt):
+                        dfs(nxt, path+[nxt])
+                    if best_path is not None:
+                        return
+
+        dfs(src, [src])
+        return best_path
+
+    # ---------- Vòng lặp từng kho báu ----------
+    while treasures and time.time() - start_time < time_limit:
+        # chọn kho báu gần nhất theo Manhattan
+        treasures.sort(key=lambda t: manhattan(current, t))
+        target = treasures.pop(0)
+
+        seg = forward_checking_path(current, target)
+        if not seg:
+            return None, collected, total_treasures, explored_flat
+        full_path.extend(seg[1:])
+        collected += 1
+        current = target
+        maze[current[0]][current[1]] = "."  # ăn kho báu
+
+    # ---------- Cuối cùng: tới đích ----------
+    seg = forward_checking_path(current, end)
+    if seg:
+        full_path.extend(seg[1:])
+    else:
+        return None, collected, total_treasures, explored_flat
+
+    return full_path, collected, total_treasures, explored_flat
 
 # 3. AND-OR tree search
 def and_or_tree_search(maze):

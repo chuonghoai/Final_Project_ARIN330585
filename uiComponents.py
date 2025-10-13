@@ -756,7 +756,7 @@ class mazeObj:
     # Vẽ đường đi cuối cùng (có thể quay đầu)
     def draw_path(self, path_coords, sizeOfBlock=(40, 40),
                 color="#50E671", alpha=120,
-                delay=16, command=None, cells_per_frame=10):
+                delay=16, command=None, cells_per_frame=5):
         self.processDone = True
         self.animating = True
 
