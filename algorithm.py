@@ -2,6 +2,8 @@ from collections import deque
 from heapq import heappush, heappop
 import random, math
 import time
+import heapq
+
 
 stopRunning = lambda: False
 
@@ -34,6 +36,14 @@ def chooseAlgorithm(name, maze, _stopRunning=lambda: False):
         return path, collected, total_treasure, None
     if name == "AC-3":
         result = ac3_greedy_collect_treasures(maze)
+    if name == "DFS":
+        result = dfs_maze_collect_all_to_goal(maze)
+    if name == "UCS":
+        result = ucs_maze_collect_all_to_goal(maze)
+    if name == "Beam Search":
+        result = beam_search_maze_collect_all_to_goal(maze)
+    if name == "Backtracking":
+        result = backtracking_maze_collect_all_to_goal(maze)
     return result
 
 def countAllTreasure(maze):
@@ -952,6 +962,476 @@ def ac3_greedy_collect_treasures(maze, timeout=1.0):
     return full_path, collected, total_treasure, process
 
 
+# 7. DFS
+def dfs_maze_collect_all_to_goal(maze):
+    rows, cols = len(maze), len(maze[0])
+    start = end = None
+    treasures = set()
+
+    for r in range(rows):
+        for c in range(cols):
+            cell = maze[r][c]
+            if cell == "A":
+                start = (r, c)
+            elif cell == "B":
+                end = (r, c)
+            elif cell == "t":
+                treasures.add((r, c))
+
+    total_treasures = len(treasures)
+    if start is None or end is None:
+        return None, 0, total_treasures, []
+
+    treasure_index = {pos: idx for idx, pos in enumerate(treasures)}
+    ALL_MASK = (1 << total_treasures) - 1
+
+    directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+    explored_flat = []
+    seen_explored = set()
+
+    stack = [(start, [start], 0)]  # (vị trí, đường đi, mask kho báu)
+    visited = set([(start, 0)])
+
+    final_path = None
+    final_collected = 0
+
+    while stack:
+        if stopRunning():
+            return None, 0, total_treasures, explored_flat
+
+        pos, path_coords, mask = stack.pop()
+        r, c = pos
+
+        if pos not in seen_explored:
+            seen_explored.add(pos)
+            explored_flat.append(pos)
+
+        # Cập nhật mask khi nhặt kho báu
+        if pos in treasure_index:
+            mask |= 1 << treasure_index[pos]
+
+        # Điều kiện kết thúc
+        if pos == end and mask == ALL_MASK:
+            final_path = path_coords
+            final_collected = total_treasures
+            break
+
+        for dr, dc in directions:
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < rows and 0 <= nc < cols and maze[nr][nc] != "*":
+                new_pos = (nr, nc)
+                new_mask = mask
+                if new_pos in treasure_index:
+                    new_mask |= 1 << treasure_index[new_pos]
+                key = (new_pos, new_mask)
+                if key not in visited:
+                    visited.add(key)
+                    stack.append((new_pos, path_coords + [new_pos], new_mask))
+
+    if final_path is None:
+        return None, 0, total_treasures, explored_flat
+
+    return final_path, final_collected, total_treasures, explored_flat
+
+
+# BEAM SEARCH
+def beam_search_maze_collect_all_to_goal(maze, beam_width=5):
+    rows, cols = len(maze), len(maze[0])
+    start = end = None
+    treasures = []
+
+    for i in range(rows):
+        for j in range(cols):
+            v = maze[i][j]
+            if v == "A": start = (i, j)
+            elif v == "B": end = (i, j)
+            elif v == "t": treasures.append((i, j))
+
+    total_treasures = len(treasures)
+    if not start or not end:
+        return None, 0, total_treasures, []
+
+    treasure_index = {pos: idx for idx, pos in enumerate(treasures)}
+    ALL_MASK = (1 << total_treasures) - 1
+
+    def manhattan(a, b): return abs(a[0]-b[0]) + abs(a[1]-b[1])
+    def in_bounds(x, y): return 0 <= x < rows and 0 <= y < cols
+
+    # heuristic cho một state
+    def score_state(pos, mask):
+        # nếu còn kho báu: lấy khoảng cách đến kho báu gần nhất
+        remaining = []
+        for idx, tpos in enumerate(treasures):
+            if not (mask & (1 << idx)):
+                remaining.append(tpos)
+        rem_cnt = len(remaining)
+        if rem_cnt > 0:
+            dmin = min(manhattan(pos, t) for t in remaining)
+        else:
+            dmin = manhattan(pos, end)
+        # cộng thêm "áp lực" còn bao nhiêu kho báu
+        return dmin + 2 * rem_cnt
+
+    directions = [(-1,0),(1,0),(0,-1),(0,1)]
+
+    # explored theo yêu cầu UI (flatten theo toạ độ duy nhất)
+    explored_flat = []
+    seen_explored_pos = set()
+
+    # visited lưu best depth đã biết của một (pos,mask) để tránh vòng lặp
+    best_depth = {}
+
+    # parent để reconstruct path: parent[(pos, mask)] = (prev_pos, prev_mask)
+    parent = {}
+
+    # Khởi tạo mask ở start
+    start_mask = 0
+    if start in treasure_index:
+        start_mask |= 1 << treasure_index[start]
+
+    depth = 0
+    cur_beam = [(start, start_mask)]
+    best_depth[(start, start_mask)] = 0
+    parent[(start, start_mask)] = None
+
+    # Đánh dấu explored
+    if start not in seen_explored_pos:
+        seen_explored_pos.add(start)
+        explored_flat.append(start)
+
+    # Nếu đã start ở B và đã đủ kho báu
+    if start == end and start_mask == ALL_MASK:
+        return [start], total_treasures, total_treasures, explored_flat
+
+    while cur_beam:
+        if stopRunning():
+            return None, 0, total_treasures, explored_flat
+
+        depth += 1
+        candidates = []
+
+        # Mở rộng toàn bộ node trong beam hiện tại
+        for pos, mask in cur_beam:
+            if pos == end and mask == ALL_MASK:
+                # reconstruct
+                goal_key = (pos, mask)
+                path = []
+                k = goal_key
+                while k is not None:
+                    path.append(k[0])
+                    k = parent[k]
+                path.reverse()
+                collected = total_treasures
+                return path, collected, total_treasures, explored_flat
+
+            r, c = pos
+            for dr, dc in directions:
+                nr, nc = r+dr, c+dc
+                if not (in_bounds(nr, nc) and maze[nr][nc] != "*"):
+                    continue
+                npos = (nr, nc)
+                nmask = mask
+                if npos in treasure_index:
+                    nmask |= 1 << treasure_index[npos]
+
+                # đánh dấu explored pos (không cần theo mask)
+                if npos not in seen_explored_pos:
+                    seen_explored_pos.add(npos)
+                    explored_flat.append(npos)
+
+                key = (npos, nmask)
+                # chỉ nhận nếu chưa có depth tốt hơn cho state này
+                old = best_depth.get(key)
+                if old is None or depth < old:
+                    best_depth[key] = depth
+                    parent[key] = (pos, mask)
+                    candidates.append(key)
+
+        if not candidates:
+            break
+
+        # Chọn beam_width tốt nhất theo heuristic
+        # (Loại trùng lặp key nếu phát sinh)
+        # Sắp xếp theo score tăng dần
+        uniq = {}
+        for k in candidates:
+            if k not in uniq:
+                uniq[k] = score_state(k[0], k[1])
+
+        # giữ top-k
+        sorted_keys = sorted(uniq.items(), key=lambda x: x[1])
+        cur_beam = [k for k, _ in sorted_keys[:beam_width]]
+
+        # Kiểm tra goal trong top-k ngay sau cắt tỉa
+        for pos, mask in cur_beam:
+            if pos == end and mask == ALL_MASK:
+                # reconstruct
+                goal_key = (pos, mask)
+                path = []
+                k = goal_key
+                while k is not None:
+                    path.append(k[0])
+                    k = parent[k]
+                path.reverse()
+                collected = total_treasures
+                return path, collected, total_treasures, explored_flat
+
+    # Không tìm được đường đi thoả mãn
+    return None, 0, total_treasures, explored_flat
+
+
+# UCS 
+def ucs_maze_collect_all_to_goal(maze):
+    rows, cols = len(maze), len(maze[0])
+
+    start = end = None
+    treasures = []
+
+    for r in range(rows):
+        for c in range(cols):
+            v = maze[r][c]
+            if v == "A":
+                start = (r, c)
+            elif v == "B":
+                end = (r, c)
+            elif v == "t":
+                treasures.append((r, c))
+
+    total_treasures = len(treasures)
+    if start is None or end is None:
+        return None, 0, total_treasures, []
+
+    treasure_index = {pos: idx for idx, pos in enumerate(treasures)}
+    ALL_MASK = (1 << total_treasures) - 1
+
+    # --- cost mỗi bước (bạn có thể chỉnh nếu có loại địa hình khác) ---
+    def step_cost(from_pos, to_pos):
+        return 1  # mặc định mỗi bước = 1
+
+    def in_bounds(x, y): return 0 <= x < rows and 0 <= y < cols
+
+    directions = [(-1,0), (1,0), (0,-1), (0,1)]
+
+    # Để hiển thị quá trình mở rộng trên UI (flatten theo toạ độ duy nhất)
+    explored_flat = []
+    seen_explored_pos = set()
+
+    # Priority queue: (g_cost, pos, mask)
+    # parent để dựng path: parent[(pos, mask)] = (prev_pos, prev_mask)
+    pq = []
+    start_mask = 0
+    if start in treasure_index:
+        start_mask |= 1 << treasure_index[start]
+
+    heapq.heappush(pq, (0, start, start_mask))
+    parent = {(start, start_mask): None}
+
+    # best_g lưu chi phí nhỏ nhất đã biết cho mỗi state
+    best_g = {(start, start_mask): 0}
+
+    # đánh dấu explored pos lần đầu (cho UI)
+    if start not in seen_explored_pos:
+        seen_explored_pos.add(start)
+        explored_flat.append(start)
+
+    # Trường hợp start đã là goal và có đủ kho báu (hiếm khi xảy ra)
+    if start == end and start_mask == ALL_MASK:
+        return [start], total_treasures, total_treasures, explored_flat
+
+    while pq:
+        if stopRunning():
+            return None, 0, total_treasures, explored_flat
+
+        g, pos, mask = heapq.heappop(pq)
+        # Nếu đây không còn là chi phí tốt nhất cho state này, bỏ qua
+        if best_g.get((pos, mask), float("inf")) < g:
+            continue
+
+        # Cập nhật mask khi nhặt kho báu tại pos
+        if pos in treasure_index:
+            new_mask_here = mask | (1 << treasure_index[pos])
+            if new_mask_here != mask:
+                mask = new_mask_here  # cập nhật ngay tại nút đang xét
+
+        # Điều kiện kết thúc
+        if pos == end and mask == ALL_MASK:
+            # reconstruct path
+            path = []
+            key = (pos, mask)
+            while key is not None:
+                path.append(key[0])
+                key = parent[key]
+            path.reverse()
+            return path, total_treasures, total_treasures, explored_flat
+
+        r, c = pos
+        for dr, dc in directions:
+            nr, nc = r + dr, c + dc
+            if not (in_bounds(nr, nc) and maze[nr][nc] != "*"):
+                continue
+
+            npos = (nr, nc)
+            nmask = mask
+            if npos in treasure_index:
+                nmask |= 1 << treasure_index[npos]
+
+            # đánh dấu explored pos cho UI
+            if npos not in seen_explored_pos:
+                seen_explored_pos.add(npos)
+                explored_flat.append(npos)
+
+            new_g = g + step_cost(pos, npos)
+            state = (npos, nmask)
+            if new_g < best_g.get(state, float("inf")):
+                best_g[state] = new_g
+                parent[state] = (pos, mask)
+                heapq.heappush(pq, (new_g, npos, nmask))
+
+    # Không tìm thấy đường hợp lệ (nhặt hết kho báu rồi tới B)
+    return None, 0, total_treasures, explored_flat
+
+
+# BACKTRACKING
+def backtracking_maze_collect_all_to_goal(maze, max_depth=100000, time_limit=3.0):
+    rows, cols = len(maze), len(maze[0])
+
+    # ---- Tìm A, B, kho báu ----
+    start = end = None
+    treasures = []
+    for i in range(rows):
+        for j in range(cols):
+            v = maze[i][j]
+            if v == "A": start = (i, j)
+            elif v == "B": end = (i, j)
+            elif v == "t": treasures.append((i, j))
+
+    total_treasures = len(treasures)
+    if start is None or end is None:
+        return None, 0, total_treasures, []
+
+    treasure_index = {pos: idx for idx, pos in enumerate(treasures)}
+    ALL_MASK = (1 << total_treasures) - 1
+
+    def in_bounds(x, y): 
+        return 0 <= x < rows and 0 <= y < cols
+
+    def manhattan(a, b): 
+        return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+    # Heuristic: target gần nhất + áp lực số kho báu còn lại
+    def heuristic(pos, mask):
+        remaining = []
+        for idx, tpos in enumerate(treasures):
+            if not (mask & (1 << idx)):
+                remaining.append(tpos)
+        rem_cnt = len(remaining)
+        if rem_cnt > 0:
+            dmin = min(manhattan(pos, t) for t in remaining)
+        else:
+            dmin = manhattan(pos, end)
+        return dmin + 2 * rem_cnt
+
+    directions = [(-1,0),(1,0),(0,-1),(0,1)]
+
+    # Theo dõi cho UI
+    explored_flat = []
+    seen_explored_pos = set()
+
+    # best cho branch-and-bound
+    best_path = None
+    best_len = float("inf")
+
+    # Lưu độ sâu tốt nhất đã thấy cho mỗi state để tránh lặp kém
+    best_depth = {}  # key: (pos, mask) -> depth (path_len - 1)
+
+    # Khởi tạo
+    start_mask = 0
+    if start in treasure_index:
+        start_mask |= 1 << treasure_index[start]
+
+    start_time = time.time()
+
+    # Đánh dấu explored tại start
+    if start not in seen_explored_pos:
+        seen_explored_pos.add(start)
+        explored_flat.append(start)
+
+    # Nếu ngay từ đầu đã xong
+    if start == end and start_mask == ALL_MASK:
+        return [start], total_treasures, total_treasures, explored_flat
+
+    # Sắp xếp hướng đi theo heuristic để dẫn đường tốt hơn
+    def ordered_neighbors(pos, mask):
+        r, c = pos
+        cand = []
+        for dr, dc in directions:
+            nr, nc = r + dr, c + dc
+            if in_bounds(nr, nc) and maze[nr][nc] != "*":
+                npos = (nr, nc)
+                nmask = mask
+                if npos in treasure_index:
+                    nmask |= 1 << treasure_index[npos]
+                h = heuristic(npos, nmask)
+                cand.append((h, npos, nmask))
+                # đánh dấu explored pos cho UI (chỉ 1 lần)
+                if npos not in seen_explored_pos:
+                    seen_explored_pos.add(npos)
+                    explored_flat.append(npos)
+        # Ưu tiên h nhỏ
+        cand.sort(key=lambda x: x[0])
+        return [(npos, nmask) for _, npos, nmask in cand]
+
+    # DFS đệ quy
+    def dfs(pos, mask, path):
+        nonlocal best_path, best_len
+
+        # Ngắt an toàn
+        if stopRunning():
+            return
+        if time.time() - start_time > time_limit:
+            return
+        if len(path) > max_depth:
+            return
+
+        # Đã đủ kho báu và tới B
+        if pos == end and mask == ALL_MASK:
+            if len(path) < best_len:
+                best_len = len(path)
+                best_path = path[:]
+            return
+
+        # Bound: nếu đường ngắn nhất có thể (ước lượng) vẫn không thắng best hiện tại → cắt
+        if best_len < float("inf"):
+            if len(path) + heuristic(pos, mask) >= best_len:
+                return
+
+        # Tránh mở rộng state kém hơn
+        cur_depth = len(path) - 1
+        key = (pos, mask)
+        if key in best_depth and cur_depth >= best_depth[key]:
+            return
+        best_depth[key] = cur_depth
+
+        # Mở rộng theo thứ tự ưu tiên
+        for npos, nmask in ordered_neighbors(pos, mask):
+            path.append(npos)
+            dfs(npos, nmask, path)
+            path.pop()
+
+    dfs(start, start_mask, [start])
+
+    if best_path is None:
+        # Không tìm được lộ trình ăn hết kho báu rồi tới B
+        return None, 0, total_treasures, explored_flat
+
+    # Đếm lại số kho báu trên best_path (nên = total_treasures)
+    collected_mask = 0
+    for p in best_path:
+        if p in treasure_index:
+            collected_mask |= 1 << treasure_index[p]
+    collected = bin(collected_mask).count("1")
+
+    return best_path, collected, total_treasures, explored_flat
 
 if __name__ == "__main__":
     maze = [
