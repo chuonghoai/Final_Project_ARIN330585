@@ -230,7 +230,9 @@ class mazePage:
         
     # Vẽ combo box chọn thuật toán
     def draw_cbbox(self):
-        values = ["BFS", "And-Or Tree", "Belief state", "Partially observable", "AC-3", "Hill Climbing"]
+        values = ["BFS", "Greedy", "A*", "IDL", "Simulated Annealing", "Forward Checking", 
+                  "And-Or Tree", "Belief state", "Partially observable", "AC-3", "DFS", "Hill Climbing",
+                  "UCS", "Beam Search", "Backtracking"]
         self.algorithmCbb = ComboBoxObj(self.canvas)
         self.algorithmCbb.createComboBox(
             self.width - 185, self.height//2 - 200,
