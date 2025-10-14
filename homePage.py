@@ -9,6 +9,7 @@ class homePage:
         self.width = width
         self.height = height
         root.title("Maze game")
+        root.after(10, lambda: root.iconbitmap("Gallery/MAZE_LOGO.ico"))
         
         # Nạp font chữ
         _font = tkextrafont.Font(file="font/MinecraftTen-VGORe.ttf", family="Minecraft Ten")
