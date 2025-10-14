@@ -435,6 +435,9 @@ class mazePage:
 
         self.animating = False
 
+        if hasattr(self, "maze"):
+            self.maze.clearMaze()
+
         if changeMaze:
             self.mazeIndex = (self.mazeIndex + 1) % len(self.mazeArr)
         _maze = self.mazeArr[self.mazeIndex]

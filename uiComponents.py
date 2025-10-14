@@ -996,6 +996,43 @@ class mazeObj:
             self._after_id.append(after_id)
 
         draw_step(0)
+        
+    def clearMaze(self):
+        """Xóa toàn bộ mê cung hiện tại khỏi canvas."""
+        if not hasattr(self, "canvas"):
+            return
+
+        # Xóa các block
+        for b in getattr(self, "blocks", []):
+            try:
+                self.canvas.delete(b)
+            except:
+                pass
+        self.blocks.clear()
+
+        # Xóa các kho báu
+        for t in getattr(self, "treasure_id", []):
+            try:
+                self.canvas.delete(t)
+            except:
+                pass
+        self.treasure_id.clear()
+        self.treasure_pos.clear()
+        self.treasure_map.clear()
+
+        # Xóa nhân vật, đích và khung
+        for attr in ["avatar_id", "end_id", "border_id"]:
+            obj_id = getattr(self, attr, None)
+            if obj_id:
+                try:
+                    self.canvas.delete(obj_id)
+                except:
+                    pass
+                setattr(self, attr, None)
+
+        # Đặt lại các vị trí khởi đầu và kết thúc
+        self.start_pos = None
+        self.end_pos = None
 
 class TimerObj:
     def __init__(self, canvas):
