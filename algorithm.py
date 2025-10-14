@@ -1471,7 +1471,7 @@ def HCalgorithm(maze, max_steps=10000):
 
         return path, explored, False
 
-    # --- Hill Climbing đa pha linh hoạt ---
+    # Hill Climbing đa pha linh hoạt
     full_path = [start]
     process = [start]
     collected = []
@@ -1489,7 +1489,7 @@ def HCalgorithm(maze, max_steps=10000):
         best_target = None
         found_path = False
 
-        # --- thử đến từng target ---
+        # thử đến từng target
         for target in targets:
             if stopRunning():
                 return None, 0, total_treasures, process, False
