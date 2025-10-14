@@ -1,7 +1,5 @@
 import tkinter as tk
-from PIL import Image, ImageTk
 from uiComponents import ButtonObj, ImageObj, AudioControl
-from tkinter import font as tkFont
 
 class chooseAvt:
     def __init__(self, root, width=1100, height=700):

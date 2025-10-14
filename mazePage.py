@@ -1,9 +1,6 @@
 import tkinter as tk
-from PIL import Image, ImageTk
 from uiComponents import ButtonObj, ImageObj, ComboBoxObj, mazeObj, textObj, TimerObj, AudioControl
-import tkextrafont
 import algorithm
-import time
 import threading
 import random
 
@@ -70,7 +67,7 @@ class mazePage:
                 "*	.	.	.	*	.	.	.	*	.	*	.	.	.	*	.	*",
                 "*	*	*	.	*	*	*	.	*	.	*	.	*	.	*	.	*",
                 "*	.	.	.	.	.	*	.	*	.	.	.	*	.	.	.	*",
-                "*	*	*	*	*	*	*	.	*	*	*	*	*	*	*	.	*",
+                "*	*	*	*	*	t	*	.	*	*	*	*	*	*	*	.	*",
                 "*	.	.	.	t	.	.	.	*	.	.	.	.	.	.	?	*",
                 "*	A	*	*	*	*	*	*	*	*	*	*	*	*	*	B	*"
             ],
@@ -397,7 +394,7 @@ class mazePage:
                     print(f"Bạn đã chọn thuật toán {self.algorithmChoosed}")
                     
                     if self.algorithmCbb.getValue() == "Partially observable":
-                        self.maze.draw_path_POS(maze, path, onFinish=ProcessDone)
+                        self.maze.draw_path_POS(maze, mazeCover, path, onFinish=ProcessDone)
                     else:    
                         self.maze.draw_search_process(process, path, onFinish=ProcessDone)
 

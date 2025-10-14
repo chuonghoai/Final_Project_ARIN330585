@@ -1,6 +1,4 @@
-import tkinter as tk
-from tkinter import ttk, PhotoImage
-from PIL import Image, ImageDraw, ImageFont, ImageTk, ImageFilter
+from PIL import Image, ImageDraw, ImageTk, ImageFilter
 import time
 import pygame
 import threading
@@ -901,7 +899,7 @@ class mazeObj:
             self.canvas.itemconfigure(self.avatar_id, state="normal")
 
     # Hàm vẽ đường đi dành riêng cho thuật toán Partially observable
-    def draw_path_POS(self, maze, path_coords,
+    def draw_path_POS(self, maze, mazeCover, path_coords,
                     sizeOfBlock=(40, 40),
                     color="#50E671", alpha=120,
                     delay=16, cells_per_frame=5,
@@ -974,7 +972,7 @@ class mazeObj:
                     ni, nj = i + dr, j + dc
                     if 0 <= ni < rows and 0 <= nj < cols:
                         val = maze[ni][nj]
-                        if (ni, nj) in collected:
+                        if (ni, nj) in collected and mazeCover[ni][nj] == "t":
                             continue
                         px, py = nj * w, ni * h
                         if val == '*':

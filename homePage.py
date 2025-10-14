@@ -2,7 +2,6 @@ import tkinter as tk
 import uiComponents
 from uiComponents import ButtonObj, ImageObj, AudioControl
 import tkextrafont
-import pygame
 
 class homePage:
     def __init__(self, root, width=1100, height=700):

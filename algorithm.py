@@ -3,7 +3,7 @@ from heapq import heappush, heappop
 import random, math
 import time
 import heapq
-
+import copy
 
 stopRunning = lambda: False
 
@@ -14,38 +14,38 @@ def chooseAlgorithm(name, maze, _stopRunning=lambda: False):
     result = None
     
     if name == "BFS":
-        result = bfs_maze_collect_all_to_goal(maze)
+        result = BFSalgorithm(maze)
     if name == "Greedy":
-        result = greedy_maze_collect_all_to_goal(maze)
+        result = GreedyAlgorithm(maze)
     if name == "A*":
-        result = a_star_maze_collect_all_to_goal(maze)
+        result = AstarAlgorithm(maze)
     if name == "IDL":
-        result = idl_pure_maze_collect_all_to_goal(maze, max_depth=100)
+        result = IDLalgorithm(maze, max_depth=100)
     if name == "Simulated Annealing":
-        result = simulated_annealing_maze_collect_all_to_goal(maze)
+        result = SAalgorithm(maze)
     if name == "Forward Checking":
-        result = forward_checking_multi_goal_maze(maze)
+        result = FCalgorithm(maze)
     if name == "And-Or Tree":
         result = and_or_tree_search(maze)
     if name == "Belief state":
-        result = belief_state_search_bfs_to_goal(maze)
+        result = beliefState(maze)
     if name == "Partially observable":
-        result = POS_algorithm(maze)
+        result = POSalgorithm(maze)
         path, collected = result
         total_treasure = countAllTreasure(maze[0])
         return path, collected, total_treasure, None
     if name == "AC-3":
-        result = ac3_greedy_collect_treasures(maze)
+        result = AC3algorithm(maze)
     if name == "DFS":
-        result = dfs_maze_collect_all_to_goal(maze)
+        result = DFSalgorithm(maze)
     if name == "UCS":
-        result = ucs_maze_collect_all_to_goal(maze)
+        result = UCSalgorithm(maze)
     if name == "Beam Search":
-        result = beam_search_maze_collect_all_to_goal(maze)
+        result = BeamSearch(maze)
     if name == "Backtracking":
-        result = backtracking_maze_collect_all_to_goal(maze)
+        result = backtrackingAlgorithm(maze)
     if name == "Hill Climbing":
-        result = hill_climbing_maze_real_v4(maze)
+        result = HCalgorithm(maze)
         return result
     return result
 
@@ -60,7 +60,7 @@ def countAllTreasure(maze):
     return cnt
 
 # 1. BFS
-def bfs_maze_collect_all_to_goal(maze):
+def BFSalgorithm(maze):
     rows, cols = len(maze), len(maze[0])
     
     start = None
@@ -110,11 +110,9 @@ def bfs_maze_collect_all_to_goal(maze):
             seen_explored.add(pos)
             explored_flat.append(pos)
         
-        # cập nhật mask nếu nhặt treasure
         if pos in treasure_index:
             mask |= 1 << treasure_index[pos]
         
-        # chỉ cho phép về đích khi đã nhặt hết kho báu
         if pos == end and mask == ALL_MASK:
             final_path = path_coords
             final_collected = total_treasures
@@ -139,7 +137,7 @@ def bfs_maze_collect_all_to_goal(maze):
     return final_path, final_collected, total_treasures, explored_flat
 
 # 2. A* Search
-def a_star_maze_collect_all_to_goal(maze):
+def AstarAlgorithm(maze):
     rows, cols = len(maze), len(maze[0])
     start = end = None
     treasures = []
@@ -172,7 +170,7 @@ def a_star_maze_collect_all_to_goal(maze):
         explored = []
 
         while pq:
-            f, g, current = heappop(pq)
+            f, g    , current = heappop(pq)
             explored.append(current)
             if current == goal:
                 path = []
@@ -220,8 +218,9 @@ def a_star_maze_collect_all_to_goal(maze):
         total_cost += cost_to_end
 
     return final_path, final_collected, total_treasures, explored_flat
+
 # 3. Greedy Search
-def greedy_maze_collect_all_to_goal(maze):
+def GreedyAlgorithm(maze):
     rows, cols = len(maze), len(maze[0])
     start = end = None
     treasures = []
@@ -244,15 +243,15 @@ def greedy_maze_collect_all_to_goal(maze):
     def heuristic(a, b):
         return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
-    def greedy_path(src, goal):
+    def greedy_path(src, target):
         pq = []
-        heappush(pq, (heuristic(src, goal), src))
+        heappush(pq, (heuristic(src, target), src))
         came_from = {src: None}
         explored = []
         while pq:
             h, current = heappop(pq)
             explored.append(current)
-            if current == goal:
+            if current == target:
                 path = []
                 while current is not None:
                     path.append(current)
@@ -265,7 +264,7 @@ def greedy_maze_collect_all_to_goal(maze):
                     neighbor = (nr, nc)
                     if neighbor not in came_from:
                         came_from[neighbor] = current
-                        heappush(pq, (heuristic(neighbor, goal), neighbor))
+                        heappush(pq, (heuristic(neighbor, target), neighbor))
         return None, explored
 
     current = start
@@ -292,7 +291,7 @@ def greedy_maze_collect_all_to_goal(maze):
     return final_path, final_collected, total_treasures, explored_flat
 
 # 4. IDL Search
-def idl_pure_maze_collect_all_to_goal(maze, max_depth=1000):
+def IDLalgorithm(maze, max_depth=1000):
     rows, cols = len(maze), len(maze[0])
     start = end = None
     treasures = []
@@ -363,7 +362,7 @@ def idl_pure_maze_collect_all_to_goal(maze, max_depth=1000):
     return final_path, collected, total_treasures, explored_flat
 
 # 4. Simulated Annealing
-def simulated_annealing_maze_collect_all_to_goal(maze):
+def SAalgorithm(maze):
     rows, cols = len(maze), len(maze[0])
     start = end = None
     treasures = []
@@ -407,6 +406,7 @@ def simulated_annealing_maze_collect_all_to_goal(maze):
             path.append(cur)
             cur = parent[cur]
         return path[::-1]
+    
     #tính khoảng cách giữa các điểm
     nodes = [start] + treasures + [end]
     K = len(nodes)
@@ -435,6 +435,7 @@ def simulated_annealing_maze_collect_all_to_goal(maze):
             c += dist[order[i]][order[i+1]]
         c += dist[order[-1]][m+1]
         return c
+    
     #bđ chạy SA
     curr = treasure_idx[:]
     rng.shuffle(curr)
@@ -484,7 +485,7 @@ def simulated_annealing_maze_collect_all_to_goal(maze):
     return full_path, collected, total_treasures, explored_flat
 
 # 5. Forward Checking
-def forward_checking_multi_goal_maze(maze):
+def FCalgorithm(maze):
 
     rows, cols = len(maze), len(maze[0])
     start = end = None
@@ -573,66 +574,6 @@ def forward_checking_multi_goal_maze(maze):
         return None, collected, total_treasures, explored_flat
 
     return full_path, collected, total_treasures, explored_flat
-    total_treasures = len(treasures)
-    if start is None or end is None:
-        return None, 0, total_treasures, []
-
-    ALL_MASK = (1 << total_treasures) - 1
-    treasure_index = {pos: idx for idx, pos in enumerate(treasures)}
-    
-    directions = [(1,0),(-1,0),(0,1),(0,-1)]
-    explored_flat = []
-    seen_explored = set()
-    
-    # BFS queue: (pos, path_so_far, mask_collected)
-    start_mask = 0
-    if start in treasure_index:
-        start_mask |= 1 << treasure_index[start]
-    
-    queue = deque([(start, [start], start_mask)])
-    visited = set([(start, start_mask)])
-    
-    final_path = None
-    final_collected = 0
-    
-    while queue:
-        if stopRunning():
-            return None, 0, total_treasures, explored_flat
-        
-        pos, path_coords, mask = queue.popleft()
-        r, c = pos
-        
-        if pos not in seen_explored:
-            seen_explored.add(pos)
-            explored_flat.append(pos)
-        
-        # cập nhật mask nếu nhặt treasure
-        if pos in treasure_index:
-            mask |= 1 << treasure_index[pos]
-        
-        # chỉ cho phép về đích khi đã nhặt hết kho báu
-        if pos == end and mask == ALL_MASK:
-            final_path = path_coords
-            final_collected = total_treasures
-            break
-        
-        for dr, dc in directions:
-            nr, nc = r+dr, c+dc
-            if 0 <= nr < rows and 0 <= nc < cols and maze[nr][nc] != "*":
-                new_pos = (nr,nc)
-                new_mask = mask
-                if new_pos in treasure_index:
-                    new_mask |= 1 << treasure_index[new_pos]
-                key = (new_pos, new_mask)
-                if key not in visited:
-                    visited.add(key)
-                    queue.append((new_pos, path_coords + [new_pos], new_mask))
-    
-    if final_path is None:
-        # không tìm được đường đi
-        return None, 0, total_treasures, explored_flat
-    
-    return final_path, final_collected, total_treasures, explored_flat
 
 # 3. AND-OR tree search
 def and_or_tree_search(maze):
@@ -674,15 +615,11 @@ def and_or_tree_search(maze):
             if 0 <= nx < rows and 0 <= ny < cols and maze[nx][ny] != "*":
                 yield (nx, ny)
 
-    # ----------------------------
-    # AND–OR Search
-    # ----------------------------
     process = []
     visited = set()
-    added_to_process = set()  # tránh thêm trùng lặp
+    added_to_process = set()
 
     def record_state(pos):
-        """Thêm vào process nếu chưa có để tránh danh sách quá dài"""
         if pos not in added_to_process:
             process.append(pos)
             added_to_process.add(pos)
@@ -717,16 +654,12 @@ def and_or_tree_search(maze):
             return path + [pos]
         return or_search(state, path)
 
-    # ----------------------------
-    # Bắt đầu tìm kế hoạch
-    # ----------------------------
     plan = or_search((start, 0), [])
 
     if plan is None:
         collected = 0
         return None, collected, total_treasure, process
 
-    # Đếm số kho báu đã nhặt được
     collected_mask = 0
     for (x, y) in plan:
         if maze[x][y] == "t":
@@ -736,15 +669,7 @@ def and_or_tree_search(maze):
     return plan, collected, total_treasure, process
 
 # 4. Belief state search
-def belief_state_search_bfs_to_goal(maze):
-    """
-    BFS belief state từ các vị trí '?' hoặc 'A', nhặt tối đa kho báu rồi đi đến B.
-    Trả về:
-        - path: list of (r,c) coordinates
-        - collected: số kho báu nhặt được
-        - total_treasures: tổng kho báu trong maze
-        - explored_flat: list of (r,c) đã mở rộng (flatten)
-    """
+def beliefState(maze):
     rows, cols = len(maze), len(maze[0])
     
     start_positions = []
@@ -754,7 +679,6 @@ def belief_state_search_bfs_to_goal(maze):
         for j in range(cols):
             cell = maze[i][j]
             if cell == "A":
-                # start_positions.append((i,j))
                 maze[i][j] = "."
             elif cell == "?":
                 start_positions.append((i,j))
@@ -835,9 +759,10 @@ def belief_state_search_bfs_to_goal(maze):
     return path, total_treasures, total_treasures, explored_flat
 
 # 5. nhìn thấy 1 phần
-def POS_algorithm(_maze):
+def POSalgorithm(_maze):
     # Giải nén maze gốc và maze bị làm mù
-    maze = [row[:] for row in _maze[0]]        # Mê cung thật
+    tmp_maze = [row[:] for row in _maze[0]]        # Mê cung thật
+    maze = copy.deepcopy(tmp_maze)
     mazeCover = [row[:] for row in _maze[1]]   # Mê cung mà agent nhìn thấy
     row, col = len(maze), len(maze[0])
     
@@ -860,7 +785,6 @@ def POS_algorithm(_maze):
                 yield ni, nj
 
     def bfs_path(start, goal):
-        """BFS trong mazeCover, nhưng kiểm tra tường thật trong maze."""
         q = deque([start])
         came = {start: None}
         while q:
@@ -933,7 +857,7 @@ def POS_algorithm(_maze):
     return path, collected
 
 # 6. AC-3
-def ac3_greedy_collect_treasures(maze, timeout=1.0):
+def AC3algorithm(maze, timeout=1.0):
     rows, cols = len(maze), len(maze[0])
     start = end = None
     treasures = []
@@ -968,7 +892,6 @@ def ac3_greedy_collect_treasures(maze, timeout=1.0):
                 ]
 
     def bfs_path(start, goal):
-        """BFS đơn giản tìm đường từ start đến goal"""
         q = deque([(start, [start])])
         visited = {start}
         while q:
@@ -1026,7 +949,7 @@ def ac3_greedy_collect_treasures(maze, timeout=1.0):
 
 
 # 7. DFS
-def dfs_maze_collect_all_to_goal(maze):
+def DFSalgorithm(maze):
     rows, cols = len(maze), len(maze[0])
     start = end = None
     treasures = set()
@@ -1098,7 +1021,7 @@ def dfs_maze_collect_all_to_goal(maze):
 
 
 # BEAM SEARCH
-def beam_search_maze_collect_all_to_goal(maze, beam_width=5):
+def BeamSearch(maze, beam_width=5):
     rows, cols = len(maze), len(maze[0])
     start = end = None
     treasures = []
@@ -1244,7 +1167,7 @@ def beam_search_maze_collect_all_to_goal(maze, beam_width=5):
 
 
 # UCS 
-def ucs_maze_collect_all_to_goal(maze):
+def UCSalgorithm(maze):
     rows, cols = len(maze), len(maze[0])
 
     start = end = None
@@ -1355,7 +1278,7 @@ def ucs_maze_collect_all_to_goal(maze):
 
 
 # BACKTRACKING
-def backtracking_maze_collect_all_to_goal(maze, max_depth=100000, time_limit=3.0):
+def backtrackingAlgorithm(maze, max_depth=100000, time_limit=3.0):
     rows, cols = len(maze), len(maze[0])
 
     # ---- Tìm A, B, kho báu ----
@@ -1495,55 +1418,9 @@ def backtracking_maze_collect_all_to_goal(maze, max_depth=100000, time_limit=3.0
     collected = bin(collected_mask).count("1")
 
     return best_path, collected, total_treasures, explored_flat
-
-if __name__ == "__main__":
-    maze = [
-                "*  *   *   *   *   *   *   *   *   *   *   *   *   *   *   *   *",
-                "*  .   *   ?   .   .   .   .   .   .   .   .   *   .   .   .   *",
-                "*  .   *   *   *   .   *   *   *   *   *   .   *   .   *   *   *",
-                "*  .   .   .   .   .   *   .   *   .   .   .   *   .   .   .   *",
-                "*  *   *   *   *   *   *   .   *   .   *   *   *   .   *   .   *",
-                "*  .   .   .   .   .   *   .   *   .   .   .   *   .   *   .   *",
-                "*  .   *   *   *   .   *   .   *   *   *   .   *   .   *   .   *",
-                "A  ?   .   .   *   .   .   .   .   .   *   .   *   .   *   .   B",
-                "*  .   *   .   *   .   *   *   *   *   *   .   *   *   *   .   *",
-                "*  .   *   .   *   .   *   .   .   .   *   .   .   .   *   .   *",
-                "*  .   *   .   *   .   *   .   *   .   *   *   *   .   *   .   *",
-                "*  .   *   .   *   .   *   .   *   .   .   .   *   .   *   .   *",
-                "*  .   *   .   *   *   *   .   *   *   *   .   *   .   *   .   *",
-                "*  .   *   .   .   .   .   .   .   .   *   .   .   .   .   t   *",
-                "*  *   *   *   *   *   *   *   *   *   *   *   *   *   *   *   *"
-    ]
     
-    def coverWall_inMaze(maze):
-        maze_copy = [list(row) for row in maze]  # mỗi dòng thành list để có thể sửa
-        height = len(maze_copy)
-        width = len(maze_copy[0])
-        for i in range(height):
-            for j in range(width):
-                if (maze_copy[i][j] == "*" or maze_copy[i][j] == "?") and i != 0 and i != height-1 and j != 0 and j != width-1:
-                    maze_copy[i][j] = "."
-        maze_copy = ["\t".join(row) for row in maze_copy]
-        return maze_copy
-    
-    def processMazeStructure(mazeArr):
-        processed = []
-        for line in mazeArr:
-            row = line.strip().split()
-            processed.append(row)
-        return processed
-    
-    mz = processMazeStructure(coverWall_inMaze(maze))
-    mx = processMazeStructure(maze)
-    # for i in processMazeStructure(maze):
-    for i in mx:
-        print(i)
-    
-    a, b = POS_algorithm((mx, mz))
-    print(a)
-    print(countAllTreasure(mx))
 # 7. hill climbing
-def hill_climbing_maze_real_v4(maze, max_steps=10000):
+def HCalgorithm(maze, max_steps=10000):
     directions = [(-1,0),(1,0),(0,-1),(0,1)]
     n, m = len(maze), len(maze[0])
 
