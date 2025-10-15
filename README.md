@@ -14,7 +14,7 @@
 | 3   | Phạm Thị Kim Ngân           | 23110128   |
 ---
 
-# BÁO CÁO DỰ ÁN Maze-Chikawa Game
+# BÁO CÁO DỰ ÁN MAZE-CHIKAWA GAME
 ## 1. Mục tiêu
 Dự án Maze-Chikawa Game nhằm mục tiêu xây dựng trò chơi nhặt kho báu và giải đố trong mê cung, tích hợp khả năng tìm kiếm đường đi thu thập kho báu và thành công đi đến điểm đích bằng các thuật toán tìm kiếm AI. Xây dựng giao diện trực quan hỗ trợ minh họa quá trình tìm lời giải của thuật toán.
 
