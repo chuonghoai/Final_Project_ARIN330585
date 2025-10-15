@@ -1,5 +1,5 @@
 <div align="center">
-    <img src="https://github.com/user-attachments/assets/eaa27ade-3657-4dbc-a44c-405f9e234942" alt="Maze game" width="170">
+    <img src="GalleryReport/LOGO.png" alt="Maze game" width="170">
     <h1>Maze-Chikawa Game</h1>
     <p>Trò chơi nhặt kho báu trong mê cung bằng các thuật toán tìm kiếm AI</p>
 </div>
@@ -19,4 +19,90 @@
 Dự án Maze-Chikawa Game nhằm mục tiêu xây dựng trò chơi nhặt kho báu và giải đố trong mê cung, tích hợp khả năng tìm kiếm đường đi thu thập kho báu và thành công đi đến điểm đích bằng các thuật toán tìm kiếm AI. Xây dựng giao diện trực quan hỗ trợ minh họa quá trình tìm lời giải của thuật toán.
 
 ## 2. Nội dung
+
 ### 2.1. Nhóm thuật toán tìm kiếm không có thông tin
+#### a) Breadth-First Search (BFS)
+- **Mô tả**: Trong mê cung, BFS bắt đầu mở rộng từ trạng thái ban đầu sang 4 hướng có thể đi được xung quanh, sau đó thêm vào hàng đợi để chờ được mở rộng. Sau đó BFS lại lấy ra một trạng thái trong queue theo nguyên tắc `fist in fist out (FIFO)` để tiếp tục mở rộng theo 4 hướng, lặp lại cho đến khi nhặt được toàn bộ kho báu và tìm thấy lối ra. Cách mở rộng này giống với việc người chơi đổ thật nhiều nước vào mê cung, dòng nước sẽ từ từ tràn ra lấp đầy mê cung cho đến khi bao phủ hoàn toàn nó.
+- **Minh họa**:
+
+#### b) Depth-First Search (DFS)
+#### c) Iterative Deepening Limited Search (IDL)
+#### d) Uniform-Cost Search (UCS)
+
+### 2.2. Nhóm thuật toán tìm kiếm có thông tin
+#### a) Greedy Best-First Search
+#### b) A* Search Algorithm
+
+### 2.3. Nhóm thuật toán tìm kiếm có thông tin
+#### a) Hill-Climbing Search
+#### b) Simulated Annealing Algorithm
+- **Mô tả**: Vì mê cung có thể có nhiều kho báu, nên thuật toán sử dụng phương pháp tạo sẵn đường đi và tìm nghiệm tốt nhất.
+
+- **Minh họa**:
+![SA](GalleryReport/gif/simulated.gif)
+
+#### c) Beam Search Algorithm
+- **Mô tả**: 
+    - Áp dụng thuật toán Beam Search vào bài toán mê cung ta có: nhân vật A tìm đường đi trong mê cung để thu thập toàn bộ kho báu t, tránh tường `*` và sau đó đến đích B.
+    - **Ý tưởng:**
+        - Mỗi trạng thái của thuật toán gồm (vị trí hiện tại, tập kho báu đã nhặt).
+        - Ở mỗi bước mở rộng, thuật toán sẽ:
+            - Sinh ra các vị trí có thể đi tiếp (4 hướng: lên, xuống, trái, phải).
+            - Tính hàm heuristic cho từng vị trí mới để ước lượng mức `tốt`.
+            - K trạng thái có heuristic tốt nhất (xa mục tiêu nhất) sẽ được giữ lại.
+
+- **Minh họa**:
+![Beam](GalleryReport/gif/beam.gif)
+
+### 2.4. Nhóm thuật toán tìm kiếm có thông tin
+#### a) AND-OR tree search
+- **Mô tả**: Ý tưởng của thuật toán AND-OR Tree Search là kết hợp việc phân chia các nhánh hành động và ràng buộc với điều kiện thu thập kho báu đủ số lượng kho báu:
+    - **Node OR**: đại diện cho lựa chọn hướng đi tiếp theo từ vị trí hiện tại.
+    - **Node AND**: đại diện cho các điều kiện cần thỏa mãn (như nhặt kho báu chưa lấy trước khi đến đích). Khi áp dụng vào mê cung: thuật toán bắt đầu từ start, với mỗi bước di chuyển hợp lệ mở rộng cây OR, đồng thời cập nhật số lượng kho báu đã thu thập. Chỉ khi tất cả kho báu đã được thu thập và đến đích, trạng thái mới được coi là goal (AND).
+
+- **Minh họa**:
+![AndOrTreeSearch](GalleryReport/gif/and_or_tree.gif)
+
+#### b) Belief-State Search
+- **Mô tả**: Dựa trên tinh thần của thuật toán và dạng vấn đề mê cung, agent có thể bị mù mịt, không biết vị trí chính xác đang ở đâu, do đó agent khởi tạo trạng thái ban đầu gồm nhiều vị trí trong mê cung mà rất có thể rằng, agent tin có khả năng mình đang ở đó. Và từ các tọa độ vị trị trong trạng thái ban đầu, thuật toán sử dụng BFS để mở rộng ra toàn bộ mê cung và tìm được tập hợp các khả năng tìm được lời giải từ tập hợp các vị trí giả định ban đầu. 
+
+- **Minh họa**:
+![BeliefState](GalleryReport/gif/belief.gif)
+
+#### c) Partially Observable Search
+- **Mô tả**: 
+    - Dựa trên tinh thần của thuật toán là chỉ nhìn thấy một phần hướng đi đúng đắn của bài toán, mê cung bị che phủ hoàn toàn các bức tường, chỉ có ngẫu nhiên một vài kho báu được hiển thị như hướng chỉ dẫn cho agent di chuyển. 
+    - Trong tình trạng mê cung bị che phù mờ mịt thế này và thuật toán đã biết vị trí của một số kho báu trong mê cung, sử dụng lại BFS để tìm đường đến kho báu gần nhất (hoặc đích nếu đã nhặt hết kho báu đã thấy) được cho biết trước trên mê cung bị che phủ (maze cover). Trong quá trình di chuyển đến kho báu (hoặc đích) gần nhất, thuật toán cũng phải sử dụng mê cung gốc để kiểm tra trạng thái của các hướng đi (như kiểm tra hướng đi đó có kho báu mới chưa được phát hiện hay không).
+
+- **Minh họa**:
+![POS](GalleryReport/gif/po.gif)
+
+### 2.5. Nhóm thuật toán tìm kiếm có thông tin
+#### a) Backtracking Search
+- **Mô tả**: 
+    - Áp dụng thuật toán Backtracking vào bài toán mê cung, mục tiêu là giúp nhân vật từ vị trí ban đầu A tìm đường đi ăn hết toàn bộ kho báu “t” rồi đến đích “B”.
+    - Ý tưởng: 
+        - Khi đang ở một vị trí hiện tại, nhân vật A có thể di chuyển theo 4 hướng: lên, xuống, trái, phải. Bỏ qua các ô tường “*” và ngoài biên. Nếu đi vào ô mới có kho báu, cập nhật mask. Tiếp tục gọi đề quy để đi sâu hơn.
+        - Nếu đã đến được B và nhặt hết kho báu thì lưu lại đường đi ngắn nhất. Hoặc nếu đường hiện tại không thể tốt hơn lời giải đang có thì cắt tỉa (branch and bound).
+        - Thuật toán sẽ quay lui về ô trước đó để thử hướng đi khác khi không còn hướng hợp lệ.
+        - Trạng thái trong bài toán: (vị trí hiện tại, đường đi, mask_kho_báu).
+        - h = khoảng cách Manhathan đến kho báu gần nhất hoặc `h = B + 2x(số kho báo còn lại)`. Nếu `độ dài đường đi hiện tại + h >= best_len` thì cắt bỏ nhánh đó.
+
+- **Minh họa**:
+![Backtracking](GalleryReport/gif/backtracking.gif)
+
+#### b) Forward-Checking Algorithm
+- **Mô tả**: Khi áp dụng vào bài toán mê cung có nhiều kho báu, Forward Checking được kết hợp với DFS (Depth-First Search) như sau:
+	- Mỗi bước đi của con rắn (hoặc tác nhân tìm đường) được xem là một biến trong CSP, giá trị là tọa độ kế tiếp.
+	- Trước khi mở rộng đến một ô mới, thuật toán sẽ kiểm tra trước xem từ ô đó còn đường đi đến đích (hoặc kho báu tiếp theo) hay không. Nếu không còn đường đi khả thi, ô đó bị loại bỏ (pruning).
+	- Khi có nhiều hướng đi, thuật toán ưu tiên những hướng có giá trị heuristic nhỏ nhất (gần đích hơn).
+	- Sau khi tìm được một kho báu, nó đặt lại trạng thái mê cung và tiếp tục tìm đến kho báu tiếp theo, cho đến khi thu thập hết và đến được đích B.
+Heuristic được sử dụng ở đây là khoảng cách Manhattan giữa hai điểm (a, b) nhằm ước lượng nhanh hướng đi gần đích nhất:
+`h(a,b)=∣a_x-b_x∣+∣a_y-b_y∣`
+
+![ForwardChecking](GalleryReport/gif/fwchecking.gif)
+
+#### c) Arc Consistency 3 (AC-3)
+- **Mô tả**: Ý tưởng chính là tận dụng tính nhất quán của cung (arc consistency) để loại bỏ các hướng đi không hợp lệ trước khi tìm kiếm. Thay vì kiểm tra ràng buộc trong quá trình duyệt BFS, thuật toán xây dựng trước domains (tập các ô kề có thể đi) cho mỗi ô trống. Khi thực hiện BFS, chỉ duyệt các ô trong domains, giúp giảm số trạng thái cần xét và tăng hiệu quả tìm kiếm. Với các bài toán như nhặt kho báu và đi đến đích, AC-3 giúp giảm bớt không gian tìm kiếm và tránh đi vào các ô vô nghĩa.
+- **Minh họa**:
+![AC3](GalleryReport/gif/Ac-3.gif)

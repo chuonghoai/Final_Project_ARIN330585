@@ -252,7 +252,7 @@ class mazePage:
             self.width - 185, self.height//2 - 200,
             values=values, 
             font=self.fontGluten,
-            w = 270,
+            w = 300,
             startBtn=(self._stBtn, self._stTxt),
             onSelect=self.on_algorithm_change
         )
