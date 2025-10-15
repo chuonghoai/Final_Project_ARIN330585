@@ -1123,8 +1123,6 @@ def BeamSearch(maze, beam_width=5):
             break
 
         # Chọn beam_width tốt nhất theo heuristic
-        # (Loại trùng lặp key nếu phát sinh)
-        # Sắp xếp theo score tăng dần
         uniq = {}
         for k in candidates:
             if k not in uniq:
@@ -1176,15 +1174,13 @@ def UCSalgorithm(maze):
     treasure_index = {pos: idx for idx, pos in enumerate(treasures)}
     ALL_MASK = (1 << total_treasures) - 1
 
-    # --- cost mỗi bước (bạn có thể chỉnh nếu có loại địa hình khác) ---
     def step_cost(from_pos, to_pos):
-        return 1  # mặc định mỗi bước = 1
+        return 1
 
     def in_bounds(x, y): return 0 <= x < rows and 0 <= y < cols
 
     directions = [(-1,0), (1,0), (0,-1), (0,1)]
 
-    # Để hiển thị quá trình mở rộng trên UI (flatten theo toạ độ duy nhất)
     explored_flat = []
     seen_explored_pos = set()
 
@@ -1206,7 +1202,6 @@ def UCSalgorithm(maze):
         seen_explored_pos.add(start)
         explored_flat.append(start)
 
-    # Trường hợp start đã là goal và có đủ kho báu (hiếm khi xảy ra)
     if start == end and start_mask == ALL_MASK:
         return [start], total_treasures, total_treasures, explored_flat
 
@@ -1223,7 +1218,7 @@ def UCSalgorithm(maze):
         if pos in treasure_index:
             new_mask_here = mask | (1 << treasure_index[pos])
             if new_mask_here != mask:
-                mask = new_mask_here  # cập nhật ngay tại nút đang xét
+                mask = new_mask_here
 
         # Điều kiện kết thúc
         if pos == end and mask == ALL_MASK:

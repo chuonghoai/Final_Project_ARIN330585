@@ -552,7 +552,7 @@ class mazeObj:
         start_x = x - (cols * w) / 2
         start_y = y - (rows * h) / 2
 
-        # Load ảnh và lưu lại để tránh bị GC
+        # Load ảnh
         self.wall_img = ImageTk.PhotoImage(Image.open(pathWall).resize(sizeOfBlock))
         self.floor_img = ImageTk.PhotoImage(Image.open(pathFloor).resize(sizeOfBlock))
         self.avt_img = ImageTk.PhotoImage(Image.open(pathAvt).resize(sizeOfBlock))
@@ -584,16 +584,16 @@ class mazeObj:
         self.start_pos = None
         self.end_pos = None
 
-        # --- Vẽ mê cung ---
+        # Vẽ mê cung
         for i in range(rows):
             for j in range(cols):
                 cx = start_x + j * w
                 cy = start_y + i * h
                 cell = maze[i][j]
 
-                if cell == "*":  # Tường
+                if cell == "*":
                     img_id = self.canvas.create_image(cx, cy, anchor="nw", image=self.wall_img)
-                else:  # Đường đi hoặc A, B
+                else:
                     img_id = self.canvas.create_image(cx, cy, anchor="nw", image=self.floor_img)
 
                     if cell == "A":
@@ -605,21 +605,21 @@ class mazeObj:
 
                 self.blocks.append(img_id)
 
-        # --- Vẽ nhân vật tại vị trí A ---
+        # Vẽ nhân vật tại vị trí A
         if self.start_pos:
             i, j = self.start_pos
             cx = start_x + j * w
             cy = start_y + i * h
             self.avatar_id = self.canvas.create_image(cx, cy, anchor="nw", image=self.avt_img)
         
-        # --- Vẽ lối thoát tại vị trí B ---
+        # Vẽ lối thoát tại vị trí B
         if self.end_pos:
             i, j = self.end_pos
             cx = start_x + j * w
             cy = start_y + i * h
             self.end_id = self.canvas.create_image(cx, cy, anchor="nw", image=self.end_img)
         
-        # --- Vẽ kho báu tại vị trí t ---
+        # Vẽ kho báu tại vị trí t
         self.treasure_map = {}
         if self.treasure_pos:
             for i, j in self.treasure_pos:
@@ -629,7 +629,7 @@ class mazeObj:
                 self.treasure_id.append(tid)
                 self.treasure_map[(i, j)] = tid
             
-        # --- Vẽ khung viền quanh mê cung ---
+        # Vẽ khung viền quanh mê cung
         x1, y1 = start_x, start_y
         x2, y2 = start_x + cols * w, start_y + rows * h
         self.border_id = self.canvas.create_rectangle(
@@ -675,7 +675,7 @@ class mazeObj:
         self.canvas.image_refs = getattr(self.canvas, "image_refs", [])
         self.canvas.image_refs.append(self.search_img)
 
-        # --- Animation từng frame ---
+        # Animation
         def draw_step(index=0):
             if not self.animating:
                 return
@@ -696,7 +696,7 @@ class mazeObj:
                 # Đếm số lần đã tô để tăng alpha (đè màu)
                 visit_count[(i, j)] = visit_count.get((i, j), 0) + 1
                 times = visit_count[(i, j)]
-                extra_alpha = min(255, alpha + times * 40)  # quay đầu nhiều → đậm hơn
+                extra_alpha = min(255, alpha + times * 40)
                 fill_color = (*base_color, extra_alpha)
 
                 # Vẽ đè lên vị trí cũ
@@ -1032,7 +1032,7 @@ class TimerObj:
         self.font = font
         self.color = color
 
-        # --- Tạo button nền ---
+        # Tạo button nền
         self.button_bg = ButtonObj(self.canvas)
         self.button_id, self.bg_text_id = self.button_bg.create_button(
             x, y, w=w, h=h, text="", 
@@ -1045,14 +1045,14 @@ class TimerObj:
             hasBorder=False
         )
 
-        # --- Tạo text thời gian chồng lên ---
+        # Tạo text thời gian chồng lên
         self.text_id = self.canvas.create_text(
             x, y,
             text=f"{prefix} 0.00 s",
             font=font, fill=color, anchor="center"
         )
 
-        # --- Bắt đầu đếm thời gian ---
+        # Bắt đầu đếm thời gian
         self.start_time = time.perf_counter()
         self.running = True
         self._update()
@@ -1096,26 +1096,26 @@ class AudioControl:
         self.size = size
         self.is_hover = False
 
-        # Khởi tạo âm thanh (chỉ 1 lần duy nhất)
+        # Khởi tạo âm thanh
         if not AudioControl._initialized:
             self.init_audio()
 
-        # --- Tải và resize hình ảnh ---
+        # Load và resize hình ảnh
         self.icon_on = self._load_image("Gallery/mute.png")
         self.icon_on_hover = self._load_image("Gallery/muteHover.png")
         self.icon_off = self._load_image("Gallery/unmute.png")
         self.icon_off_hover = self._load_image("Gallery/unmuteHover.png")
 
-        # --- Chọn icon ban đầu ---
+        # Icon ban đầu
         icon = self.icon_on if AudioControl._sound_on else self.icon_off
         self.button_id = canvas.create_image(x, y, image=icon, anchor="nw")
 
-        # --- Gắn sự kiện ---
+        # Gắn sự kiện
         canvas.tag_bind(self.button_id, "<Button-1>", self.toggle_sound)
         canvas.tag_bind(self.button_id, "<Enter>", self.on_hover)
         canvas.tag_bind(self.button_id, "<Leave>", self.on_leave)
 
-    # ---------------- ÂM THANH -----------------
+    # ÂM THANH
     @classmethod
     def init_audio(cls):
         if cls._initialized:
@@ -1147,7 +1147,7 @@ class AudioControl:
             cls._bg_channel.play(cls._bg_sound, loops=-1)
             cls._bg_channel.set_volume(0.5)
 
-    # ---------------- HÌNH ẢNH -----------------
+    # HÌNH ẢNH
     def _load_image(self, path):
         img = Image.open(path).resize(self.size, Image.LANCZOS)
         return ImageTk.PhotoImage(img)

@@ -24,12 +24,11 @@ class chooseAvt:
         self.frameBtnHeight = 75
         
         # Canvas chứa tiêu đề chữ CHOOSE và CHARACTER
-        # Container chứa tiêu đề
         self.title_height = 100
         frame_title = tk.Frame(
             self.canvas,
             width=self.width,
-            height=self.title_height * 2 + 50,  # đủ chứa 2 dòng
+            height=self.title_height * 2 + 50,
             bg="white", bd=0, highlightthickness=0
         )
         frame_title.place(x=0, y=30)  # cách top 50px

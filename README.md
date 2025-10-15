@@ -40,7 +40,7 @@ Dự án Maze-Chikawa Game nhằm mục tiêu xây dựng trò chơi nhặt kho 
 
 #### c) Iterative Deepening Limited Search (IDL)
 - **Mô tả**: 
-    - Trong bài toán tìm đường đi trong mê cung có nhiều kho báu, thuật toán `IDL` được sử dụng để lần lượt tìm đường từ vị trí hiện tại đến từng kho báu, và sau cùng là đến đích. Thay vì mở rộng toàn bộ không gian mê cung (như `BFS`), `IDL` thực hiện quá trình tìm kiếm theo chiều sâu có giới hạn, tăng dần mức độ sâu qua từng vòng lặp, đảm bảo khả năng tìm được lời giải ngắn nhất mà vẫn tiết kiệm bộ nhớ.
+    - Trong bài toán tìm đường đi trong mê cung có nhiều kho báu, thuật toán `IDL` được sử dụng để lần lượt tìm đường từ vị trí hiện tại đến từng kho báu, và sau cùng là đến đích. Thay vì mở rộng toàn bộ không gian mê cung như `BFS`, `IDL` thực hiện quá trình tìm kiếm theo chiều sâu có giới hạn, tăng dần mức độ sâu qua từng vòng lặp, đảm bảo khả năng tìm được lời giải ngắn nhất mà vẫn tiết kiệm bộ nhớ.
     - Thuật toán đặc biệt phù hợp trong những mê cung lớn, khi không gian tìm kiếm rất rộng và không thể lưu toàn bộ vào bộ nhớ cùng lúc. Mỗi khi cần di chuyển từ vị trí hiện tại đến một kho báu hoặc đến điểm kết thúc, `IDL` được gọi để xác định đường đi khả thi ngắn nhất trong phạm vi giới hạn độ sâu đã cho.
 
 - **Minh họa**:
@@ -49,7 +49,7 @@ Dự án Maze-Chikawa Game nhằm mục tiêu xây dựng trò chơi nhặt kho 
 
 #### d) Uniform-Cost Search (UCS)
 - **Mô tả**: 
-    - Áp dụng thuật toán `UCS` vào bài toán mê cung, nó sẽ tìm đường đi ngắn nhất từ điểm bắt đầu `A` đến đích `B` dựa trên chi phí, kết hợp nhặt tất cae kho báu `t`.
+    - Áp dụng thuật toán `UCS` vào bài toán mê cung, nó sẽ tìm đường đi ngắn nhất từ điểm bắt đầu `A` đến đích `B` dựa trên chi phí `g(n)`, kết hợp nhặt tất cả kho báu `t`.
     - Mỗi trạng thái được lưu thành (vị trí hiện tại, đường đi, mask).
     - Công thức hàm tính chi phí: `g(n) = tổng số bước từ A đến n`.
 
@@ -61,8 +61,10 @@ Dự án Maze-Chikawa Game nhằm mục tiêu xây dựng trò chơi nhặt kho 
 #### a) Greedy Best-First Search
 - **Mô tả**: 
     - Trong mê cung, `greedy` duyệt qua các hướng cũng gần giống với `BFS`, nhưng thay vì dùng hàng đợi (`queue`) thì `greedy` sử dụng hàng đợi ưu tiên (`priority queue`). Ý tưởng chính để chọn trạng thái sinh ra là từ `priorỉty queue` lấy ra hàng đợi có `h(n)` nhỏ nhất để duyệt, từ đó thể hiện rõ được bản tính `“tham lam”` của thuật toán.
-    - Trong bài toán này, yêu cầu đặt ra là nhặt hết toàn bộ kho báu và thoát khỏi mê cung, greedy không thể mở rộng như “dòng nước chảy” giống BFS được. Ý tưởng khám phá mê cung là từ trạng thái ban đầu, nhắm đến kho báu mà có `h(n)` nhỏ nhất để duyệt, như vậy thuật toán sẽ được chia ra thành nhiều lần greedy để nhắm đến từng kho báu, cho đến khi nhặt được hết kho báu thì mới tiến hành tìm đường “tham lam” về đích.
+    - Trong bài toán này, yêu cầu đặt ra là nhặt hết toàn bộ kho báu và thoát khỏi mê cung, greedy không thể mở rộng như “dòng nước chảy” giống BFS được. 
+    - Ý tưởng khám phá mê cung là từ trạng thái ban đầu, nhắm đến kho báu mà có `h(n)` nhỏ nhất để duyệt, như vậy thuật toán sẽ được chia ra thành nhiều lần greedy để nhắm đến từng kho báu, cho đến khi nhặt được hết kho báu thì mới tiến hành tìm đường “tham lam” về đích.
     - Trong đó, `h(n)` được tính bằng công thức `Manhattan`: khoảng cách giữa 2 điểm theo lưới
+
 - **Minh họa**:
 
 ![Greedy](GalleryReport/gif/greedy.gif)
@@ -93,7 +95,12 @@ Dự án Maze-Chikawa Game nhằm mục tiêu xây dựng trò chơi nhặt kho 
 ![HC](GalleryReport/gif/hill.gif)
 
 #### b) Simulated Annealing Algorithm
-- **Mô tả**: Vì mê cung có thể có nhiều kho báu, nên thuật toán sử dụng phương pháp tạo sẵn đường đi bằng `BFS` giữa từng cặp vị trí trên mê cung. Sau đó sử dụng vòng lặp để tìm nghiệm tốt nhất.
+- **Mô tả**: 
+    - Vì mê cung có thể có nhiều kho báu, nên thuật toán sử dụng phương pháp tạo sẵn đường đi bằng `BFS` giữa từng cặp vị trí trên mê cung (`bfs_path`). Sau đó sử dụng vòng lặp để tìm nghiệm tốt nhất.
+    - Cụ thể: 
+        - Quá trình tìm đường đi tổng thể được triển khai bằng cách chọn ngẫu nhiên 2 kho báu, **hoán đổi** hoặc **đảo đoạn** giữa 2 kho báu để tao trạng thái mới (`cand`).
+        - Nếu chi phí `cand_cost - curr_cost <= 0` thì chấp nhận luôn, ngược lại kiểm tra xác suất `exp(-delta / T)` để xét khả năng có thể chấp nhận hay không.
+        - Làm nguội `T` theo hệ số `alpha`.
 
 - **Minh họa**:
 
@@ -220,6 +227,7 @@ python -m main
 Final_Project_ARIN330585/
 ├── font/                   # font chữ
 ├── Gallery/                # Hình ảnh
+├── Sound/                  # Âm thanh
 ├── uiComponents.py         # Xử lý đồ họa
 ├── algorithm.py            # Các thuật toán tìm kiếm AI
 ├── homePage.py             # Quản lý giao diện trang chủ
