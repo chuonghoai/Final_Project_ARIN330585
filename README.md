@@ -173,3 +173,59 @@ Dự án Maze-Chikawa Game nhằm mục tiêu xây dựng trò chơi nhặt kho 
 - **Minh họa**:
 
 ![AC3](GalleryReport/gif/Ac-3.gif)
+
+---
+## Cài đặt và chạy game
+
+### Yêu cầu
+<div>
+  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-12.x-blue.svg" alt="Python 12.x"></a>
+</div>
+
+```bash
+pip install tkextrafont
+pip install Pillow
+pip install pygame
+```
+
+### Cách tải và cài đặt
+1. Clone dự án hoặc tải file zip về máy của bạn
+
+```bash
+https://github.com/chuonghoai/Final_Project_ARIN330585.git
+``` 
+
+2. Chạy ứng dụng
+
+```bash
+python -m main
+```
+
+## Hướng dẫn chơi
+1. **Giao diện trang chủ:**
+    - Ấn nút `PLAY` để vào trang chọn nhân vật
+
+2. **Giao diện chọn nhân vật:**
+    - Chọn 1 trong 3 nhân vật `Hachi`, `Chikawa`, `Usagi`
+
+3. **Giao diện mê cung:**
+    - **Bước 1**: vào `Choose Algorithm`, Chọn thuật toán
+    - **Bước 2**: Ấn nút `START` để bắt đầu chạy thuật toán
+    - **Bước 3**: Ấn nút `reset` để khởi tạo lại mê cung
+    - **(Tùy chọn) Bước 4**: Bấm nút `BACK` để quay lại giao diện chọn nhân vật
+
+## Cấu trúc dự án
+
+```
+Final_Project_ARIN330585/
+├── font/                   # font chữ
+├── Gallery/                # Hình ảnh
+├── uiComponents.py         # Xử lý đồ họa
+├── algorithm.py            # Các thuật toán tìm kiếm AI
+├── homePage.py             # Quản lý giao diện trang chủ
+├── chooseAvt.py            # Quản lý giao diện chọn nhân vật
+├── mazePage.py             # Quản lý giao diện mê cung
+├── main.py                 # Điểm vào chính của ứng dụng
+└── README.md               # Tài liệu dự án
+```
+---
