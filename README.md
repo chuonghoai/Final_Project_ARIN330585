@@ -1,5 +1,5 @@
 <div align="center">
-    <img src="https://github.com/user-attachments/assets/d6cc6a46-e289-4bf1-9bbd-5621ba81fb1c" alt="Maze game" width="170">
+    <img src="https://github.com/user-attachments/assets/eaa27ade-3657-4dbc-a44c-405f9e234942" alt="Maze game" width="170">
     <h1>Maze-Chikawa Game</h1>
     <p>Trò chơi nhặt kho báu trong mê cung bằng các thuật toán tìm kiếm AI</p>
 </div>
