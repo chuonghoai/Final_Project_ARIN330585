@@ -309,7 +309,7 @@ def IDLalgorithm(maze, max_depth=1000):
     if start is None or end is None:
         return None, 0, total_treasures, []
 
-    explored_flat = []
+    process = []
     seen_explored = set()
     directions = [(1,0), (-1,0), (0,1), (0,-1)]
 
@@ -322,7 +322,7 @@ def IDLalgorithm(maze, max_depth=1000):
                 local_visited.add(pos)
                 if pos not in seen_explored:
                     seen_explored.add(pos)
-                    explored_flat.append(pos)
+                    process.append(pos)
             if pos == goal:
                 return path
             if depth < limit:
@@ -359,9 +359,9 @@ def IDLalgorithm(maze, max_depth=1000):
     if path_to_end:
         final_path.extend(path_to_end[1:])
 
-    return final_path, collected, total_treasures, explored_flat
+    return final_path, collected, total_treasures, process
 
-# 4. Simulated Annealing
+# 5. Simulated Annealing
 def SAalgorithm(maze):
     rows, cols = len(maze), len(maze[0])
     start = end = None
@@ -484,7 +484,7 @@ def SAalgorithm(maze):
     collected = total_treasures
     return full_path, collected, total_treasures, explored_flat
 
-# 5. Forward Checking
+# 6. Forward Checking
 def FCalgorithm(maze):
 
     rows, cols = len(maze), len(maze[0])
@@ -575,13 +575,9 @@ def FCalgorithm(maze):
 
     return full_path, collected, total_treasures, explored_flat
 
-# 3. AND-OR tree search
+# 7. AND-OR tree search
 def and_or_tree_search(maze):
     rows, cols = len(maze), len(maze[0])
-
-    # ----------------------------
-    # Xác định vị trí A, B, t
-    # ----------------------------
     start = end = None
     treasures = []
 
@@ -601,9 +597,6 @@ def and_or_tree_search(maze):
     if not start or not end:
         return None, 0, total_treasure, []
 
-    # ----------------------------
-    # Các hàm tiện ích
-    # ----------------------------
     def is_goal(state):
         pos, collected_mask = state
         return pos == end and collected_mask == ALL_TREASURE
@@ -668,7 +661,7 @@ def and_or_tree_search(maze):
 
     return plan, collected, total_treasure, process
 
-# 4. Belief state search
+# 8. Belief state search
 def beliefState(maze):
     rows, cols = len(maze), len(maze[0])
     
@@ -758,7 +751,7 @@ def beliefState(maze):
     
     return path, total_treasures, total_treasures, explored_flat
 
-# 5. nhìn thấy 1 phần
+# 9. nhìn thấy 1 phần
 def POSalgorithm(_maze):
     # Giải nén maze gốc và maze bị làm mù
     tmp_maze = [row[:] for row in _maze[0]]        # Mê cung thật
@@ -856,7 +849,7 @@ def POSalgorithm(_maze):
 
     return path, collected
 
-# 6. AC-3
+# 10. AC-3
 def AC3algorithm(maze, timeout=1.0):
     rows, cols = len(maze), len(maze[0])
     start = end = None
@@ -911,7 +904,7 @@ def AC3algorithm(maze, timeout=1.0):
     full_path = [start]
     process = []
 
-    # Giai đoạn 1: ăn kho báu
+    # Nhặt hết kho báu
     while treasures and time.time() - start_time < timeout:
         # Tìm kho báu gần nhất
         best_t = None
@@ -924,11 +917,9 @@ def AC3algorithm(maze, timeout=1.0):
                 min_len = len(path)
                 best_t = t
                 best_path = path
-
+                
         if not best_t:
-            break  # không còn kho báu nào có thể đến
-
-        # Ăn kho báu gần nhất
+            break
         full_path.extend(best_path[1:])
         process.extend(best_path)
         current = best_t
@@ -936,19 +927,15 @@ def AC3algorithm(maze, timeout=1.0):
         collected_positions.add(best_t)
         treasures.remove(best_t)
 
-    # Giai đoạn 2: đi đến B
+    # Tìm đường về đích
     path_to_B = bfs_path(current, end)
     if path_to_B:
         full_path.extend(path_to_B[1:])
         process.extend(path_to_B)
-    else:
-        # không đến được B → trả về phần đã đi
-        pass
 
     return full_path, collected, total_treasure, process
 
-
-# 7. DFS
+# 11. DFS
 def DFSalgorithm(maze):
     rows, cols = len(maze), len(maze[0])
     start = end = None
@@ -1019,8 +1006,7 @@ def DFSalgorithm(maze):
 
     return final_path, final_collected, total_treasures, explored_flat
 
-
-# BEAM SEARCH
+# 12. BEAM SEARCH
 def BeamSearch(maze, beam_width=5):
     rows, cols = len(maze), len(maze[0])
     start = end = None
@@ -1137,8 +1123,6 @@ def BeamSearch(maze, beam_width=5):
             break
 
         # Chọn beam_width tốt nhất theo heuristic
-        # (Loại trùng lặp key nếu phát sinh)
-        # Sắp xếp theo score tăng dần
         uniq = {}
         for k in candidates:
             if k not in uniq:
@@ -1166,7 +1150,7 @@ def BeamSearch(maze, beam_width=5):
     return None, 0, total_treasures, explored_flat
 
 
-# UCS 
+# 13. UCS 
 def UCSalgorithm(maze):
     rows, cols = len(maze), len(maze[0])
 
@@ -1190,15 +1174,13 @@ def UCSalgorithm(maze):
     treasure_index = {pos: idx for idx, pos in enumerate(treasures)}
     ALL_MASK = (1 << total_treasures) - 1
 
-    # --- cost mỗi bước (bạn có thể chỉnh nếu có loại địa hình khác) ---
     def step_cost(from_pos, to_pos):
-        return 1  # mặc định mỗi bước = 1
+        return 1
 
     def in_bounds(x, y): return 0 <= x < rows and 0 <= y < cols
 
     directions = [(-1,0), (1,0), (0,-1), (0,1)]
 
-    # Để hiển thị quá trình mở rộng trên UI (flatten theo toạ độ duy nhất)
     explored_flat = []
     seen_explored_pos = set()
 
@@ -1220,7 +1202,6 @@ def UCSalgorithm(maze):
         seen_explored_pos.add(start)
         explored_flat.append(start)
 
-    # Trường hợp start đã là goal và có đủ kho báu (hiếm khi xảy ra)
     if start == end and start_mask == ALL_MASK:
         return [start], total_treasures, total_treasures, explored_flat
 
@@ -1237,7 +1218,7 @@ def UCSalgorithm(maze):
         if pos in treasure_index:
             new_mask_here = mask | (1 << treasure_index[pos])
             if new_mask_here != mask:
-                mask = new_mask_here  # cập nhật ngay tại nút đang xét
+                mask = new_mask_here
 
         # Điều kiện kết thúc
         if pos == end and mask == ALL_MASK:
@@ -1276,8 +1257,7 @@ def UCSalgorithm(maze):
     # Không tìm thấy đường hợp lệ (nhặt hết kho báu rồi tới B)
     return None, 0, total_treasures, explored_flat
 
-
-# BACKTRACKING
+# 14. BACKTRACKING
 def backtrackingAlgorithm(maze, max_depth=100000, time_limit=3.0):
     rows, cols = len(maze), len(maze[0])
 
@@ -1419,7 +1399,7 @@ def backtrackingAlgorithm(maze, max_depth=100000, time_limit=3.0):
 
     return best_path, collected, total_treasures, explored_flat
     
-# 7. hill climbing
+# 15. hill climbing
 def HCalgorithm(maze, max_steps=10000):
     directions = [(-1,0),(1,0),(0,-1),(0,1)]
     n, m = len(maze), len(maze[0])
@@ -1486,7 +1466,7 @@ def HCalgorithm(maze, max_steps=10000):
 
         return path, explored, False
 
-    # --- Hill Climbing đa pha linh hoạt ---
+    # Hill Climbing đa pha linh hoạt
     full_path = [start]
     process = [start]
     collected = []
@@ -1504,7 +1484,7 @@ def HCalgorithm(maze, max_steps=10000):
         best_target = None
         found_path = False
 
-        # --- thử đến từng target ---
+        # thử đến từng target
         for target in targets:
             if stopRunning():
                 return None, 0, total_treasures, process, False
@@ -1543,4 +1523,4 @@ def HCalgorithm(maze, max_steps=10000):
         if reachedGoal:
             break
 
-    return full_path, collected, total_treasures, process, reachedGoal
+    return full_path, len(collected), total_treasures, process, reachedGoal

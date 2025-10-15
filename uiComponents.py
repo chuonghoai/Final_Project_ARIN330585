@@ -22,14 +22,14 @@ class effectObj:
         self.delay = 20
 
     # Fade in
-    def fade_in(self, func_on_complete=None, steps=20, delay=20):
+    def fade_in(self, funcComplete=None, steps=20, delay=20):
         self._running = True
         def step(i=0):
             if not self._running:
                 return
             if i <= steps:
                 img = self.original.copy()
-                alpha = img.split()[3]  # lấy kênh alpha gốc
+                alpha = img.split()[3]
                 alpha = alpha.point(lambda p: p * i / steps)
                 img.putalpha(alpha)
 
@@ -44,8 +44,8 @@ class effectObj:
                 self.canvas.itemconfig(self.item_id[0], image=self.tk_img)
                 self.canvas.image_refs.append(self.tk_img)
 
-                if func_on_complete:
-                    func_on_complete()
+                if funcComplete:
+                    funcComplete()
         step()
 
     # Fade out
@@ -98,13 +98,13 @@ class effectObj:
 
         if self._after_id:
             self.canvas.after_cancel(self._after_id)
-        self._animate_slide()
+        self.animate_slide()
 
-    def _animate_slide(self):
+    def animate_slide(self):
         if not self._running:
             return
 
-        # lấy item chính (không bóng)
+        # lấy item chính nếu không có bóng
         item0 = self.item_id[0]
         coords = self.canvas.coords(item0)
         if not coords:
@@ -112,15 +112,15 @@ class effectObj:
 
         x, y = coords[0], coords[1]
 
-        # còn khoảng cách đủ lớn thì tiếp tục di chuyển
+        # Tính khoản cánh giữa hiện tại và mục tiêu
         if abs(y - self.target_y) > 1:
-            step = (self.target_y - y) * self.easing  # tính step theo hướng
+            step = (self.target_y - y) * self.easing 
             if self.hasShadow:
                 for item in self.item_id:
                     self.canvas.move(item, 0, step)
             else:
                 self.canvas.move(item0, 0, step)
-            self._after_id = self.canvas.after(self.delay, self._animate_slide)
+            self._after_id = self.canvas.after(self.delay, self.animate_slide)
         else:
             # căn chỉnh chính xác vị trí cuối
             dx = self.target_x - x
@@ -134,7 +134,6 @@ class effectObj:
             self._after_id = None
 
     def stop(self):
-        """Dừng hiệu ứng"""
         if self._after_id:
             self.canvas.after_cancel(self._after_id)
             self._after_id = None
@@ -238,7 +237,7 @@ class ButtonObj:
         format_bg = Image.linear_gradient("L").resize((w, h))
         gradient = Image.composite(cl2, cl1, format_bg)
 
-        # Rounded background
+        # Bo góc
         radius = h // 2
         round_img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
         mask = Image.new("L", (w, h), 0)
@@ -263,12 +262,12 @@ class ButtonObj:
         else:
             _ = round_img
 
-        # Add background
+        # Thêm background cho nút
         self.tk_img = ImageTk.PhotoImage(_)
         self.canvas.image_refs.append(self.tk_img)
         self.item_id = self.canvas.create_image(x, y, image=self.tk_img, anchor="center")
 
-        # Add text
+        # Thêm text
         if font_style:
             _font = (font, font_size, font_style)
         else:
@@ -289,7 +288,7 @@ class ButtonObj:
             self.canvas.tag_bind(self.item_id, "<Leave>", lambda e: remove_shadow(self.canvas, self.shadow_id, self.text_id)) 
             self.canvas.tag_bind(self.text_id, "<Leave>", lambda e: remove_shadow(self.canvas, self.shadow_id, self.text_id))
 
-        # Event binding
+        # Event
         if command:
             def action(e=None):
                 press_effect()
@@ -324,7 +323,7 @@ class ComboBoxObj:
         self.pages = []
         self.arrowLeft = None
         self.arrowRight = None
-        self.arrow_imgs = {}   # [PATCH] thêm để lưu ảnh hover
+        self.arrow_imgs = {}
         self._cfg = {
             "w": 250, "h": 60, "font": "Minecraft Ten",
             "hasbd": True, "cl1": "#fdf0d3"
@@ -339,11 +338,10 @@ class ComboBoxObj:
         cl1 = "#fdf0d3"
         self._cfg.update({"w": w, "h": h, "font": font, "hasbd": hasbd, "cl1": cl1})
 
-        # ==== Chia values thành các trang 5 phần tử ====
         self.pages = [values[i:i+5] for i in range(0, len(values), 5)]
         self.page_index = 0
 
-        # ==== Nút chính ====
+        # button chính
         btnObj = ButtonObj(self.canvas)
         self.main_btn, self.main_text = btnObj.create_button(
             x, y, w=w, h=h, text=defultText,
@@ -352,7 +350,6 @@ class ComboBoxObj:
             hasBorder=hasbd
         )
 
-        # ==== Tải sẵn hình mũi tên và hover ====
         img_obj = ImageObj(self.canvas)
         self.arrow_imgs = {
             "left": img_obj.load_image("Gallery/arrowLeft.png", w=50, h=40),
@@ -361,11 +358,11 @@ class ComboBoxObj:
             "right_hover": img_obj.load_image("Gallery/arrowRightHover.png", w=50, h=40),
         }
 
-        # ==== Vẽ mũi tên ====
+        # Draw arrow
         self.arrowLeft = self.canvas.create_image(x - w//2 - 20, y, image=self.arrow_imgs["left"])
         self.arrowRight = self.canvas.create_image(x + w//2 + 20, y, image=self.arrow_imgs["right"])
 
-        # ==== Nếu chỉ 1 trang → ẩn 2 nút ====
+        # Nếu chỉ có 1 trang,  ẩn 2 nút 
         if len(self.pages) <= 1:
             self.canvas.itemconfigure(self.arrowLeft, state="hidden")
             self.canvas.itemconfigure(self.arrowRight, state="hidden")
@@ -376,25 +373,20 @@ class ComboBoxObj:
             # Gắn hover
             self._bind_arrow_hover()
 
-        # ==== Option đầu ====
         self._create_option_buttons(self.pages[self.page_index])
         self.canvas.tag_bind(self.main_btn, "<Button-1>", lambda e: self.toggle())
         self.canvas.tag_bind(self.main_text, "<Button-1>", lambda e: self.toggle())
 
-        # Cập nhật trạng thái mũi tên ban đầu
         self._update_arrow_state()
 
-    # ===== Hover cho mũi tên =====
+    # Gắn sự kiện hover
     def _bind_arrow_hover(self):
-        # Hover left
         self.canvas.tag_bind(self.arrowLeft, "<Enter>", lambda e: self._arrow_hover("left", True))
         self.canvas.tag_bind(self.arrowLeft, "<Leave>", lambda e: self._arrow_hover("left", False))
-        # Hover right
         self.canvas.tag_bind(self.arrowRight, "<Enter>", lambda e: self._arrow_hover("right", True))
         self.canvas.tag_bind(self.arrowRight, "<Leave>", lambda e: self._arrow_hover("right", False))
 
     def _arrow_hover(self, side, entering):
-        """Thay đổi ảnh khi di chuột"""
         # Không kích hoạt hover nếu đang ở trang đầu/cuối
         if (side == "left" and self.page_index == 0) or (
             side == "right" and self.page_index == len(self.pages) - 1
@@ -409,22 +401,15 @@ class ComboBoxObj:
             self.canvas.itemconfigure(self.arrowRight, image=img)
 
     def _update_arrow_state(self):
-        """Ẩn hoặc hiện hover theo page hiện tại"""
-        # Vô hiệu hóa hover ở trang đầu/cuối bằng cách đặt ảnh chuẩn
         if self.page_index == 0:
             self.canvas.itemconfigure(self.arrowLeft, image=self.arrow_imgs["left"])
         if self.page_index == len(self.pages) - 1:
             self.canvas.itemconfigure(self.arrowRight, image=self.arrow_imgs["right"])
 
-
-    # [PATCH] tiện ích lấy tâm main button
     def _main_center(self):
-        # Tùy ButtonObj vẽ gì: nếu là image/oval/line, coords có thể khác.
-        # Ở code gốc bạn đã dùng trực tiếp (x, y), nên giả định coords trả về (x, y).
         x, y = self.canvas.coords(self.main_btn)
         return x, y
 
-    # [PATCH] tạo option theo trang hiện tại (ẩn sẵn)
     def _create_option_buttons(self, values):
         self.option_buttons.clear()
         x, y = self._main_center()
@@ -445,7 +430,6 @@ class ComboBoxObj:
             self.canvas.itemconfigure(opt_text, state="hidden")
             self.option_buttons.append((option, opt_btn, opt_text, y + (i+1)*offset))
 
-    # [PATCH] show ngay option của trang hiện tại (không đụng self.is_open)
     def _reveal_current_page(self, animate=True):
         for option, opt_btn, opt_text, target_y in self.option_buttons:
             self.canvas.itemconfigure(opt_btn, state="normal")
@@ -454,31 +438,23 @@ class ComboBoxObj:
                 option.btn_effect.slide_up(self.canvas.coords(opt_btn)[0], target_y, easing=0.3, delay=15, hasShadow=True)
                 option.text_effect.slide_up(self.canvas.coords(opt_btn)[0], target_y, easing=0.3, delay=15)
             else:
-                # Không animation: đặt luôn y đích (nếu cần)
                 cx, _cy = self.canvas.coords(opt_btn)
-                # nếu ButtonObj dùng group, có thể cần move; giả sử slide_up là hiệu ứng chính nên bỏ qua nhánh này
                 pass
 
-    # [PATCH] rebuild trang hiện tại, nếu đang mở thì reveal ngay
     def _refresh_options(self):
-        # Xóa option cũ
         for _, opt_btn, opt_text, _ in self.option_buttons:
             self.canvas.delete(opt_btn)
             self.canvas.delete(opt_text)
         self.option_buttons.clear()
 
-        # Tạo option mới cho trang hiện tại
         self._create_option_buttons(self.pages[self.page_index])
 
-        # Nếu đang mở, show ngay trang mới (không gọi open() để tránh early-return)
         if self.is_open:
-            # startBtn phải tiếp tục ẩn khi đang mở
             if self.startBtn:
                 self.canvas.itemconfigure(self.startBtn[0], state="hidden")
                 self.canvas.itemconfigure(self.startBtn[1], state="hidden")
             self._reveal_current_page(animate=True)
 
-    # ===== Pagination =====
     def next_page(self):
         if self.page_index < len(self.pages) - 1:
             self.page_index += 1
@@ -491,7 +467,6 @@ class ComboBoxObj:
             self._refresh_options()
             self._update_arrow_state()
 
-    # ===== Toggle/Open/Close =====
     def toggle(self):
         if self.is_open:
             self.close()
@@ -505,7 +480,6 @@ class ComboBoxObj:
         if self.startBtn:
             self.canvas.itemconfigure(self.startBtn[0], state="hidden")
             self.canvas.itemconfigure(self.startBtn[1], state="hidden")
-        # Hiện trang hiện tại
         self._reveal_current_page(animate=True)
 
     def close(self):
@@ -533,7 +507,6 @@ class ComboBoxObj:
         _text = self.canvas.itemcget(self.main_text, "text")
         return None if _text == "Choose Algorithm" else _text
 
-    
 class mazeObj:
     def __init__(self, canvas, animating, _after_id):
         self.canvas = canvas
@@ -579,7 +552,7 @@ class mazeObj:
         start_x = x - (cols * w) / 2
         start_y = y - (rows * h) / 2
 
-        # Load ảnh và lưu lại để tránh bị GC
+        # Load ảnh
         self.wall_img = ImageTk.PhotoImage(Image.open(pathWall).resize(sizeOfBlock))
         self.floor_img = ImageTk.PhotoImage(Image.open(pathFloor).resize(sizeOfBlock))
         self.avt_img = ImageTk.PhotoImage(Image.open(pathAvt).resize(sizeOfBlock))
@@ -611,16 +584,16 @@ class mazeObj:
         self.start_pos = None
         self.end_pos = None
 
-        # --- Vẽ mê cung ---
+        # Vẽ mê cung
         for i in range(rows):
             for j in range(cols):
                 cx = start_x + j * w
                 cy = start_y + i * h
                 cell = maze[i][j]
 
-                if cell == "*":  # Tường
+                if cell == "*":
                     img_id = self.canvas.create_image(cx, cy, anchor="nw", image=self.wall_img)
-                else:  # Đường đi hoặc A, B
+                else:
                     img_id = self.canvas.create_image(cx, cy, anchor="nw", image=self.floor_img)
 
                     if cell == "A":
@@ -632,21 +605,21 @@ class mazeObj:
 
                 self.blocks.append(img_id)
 
-        # --- Vẽ nhân vật tại vị trí A ---
+        # Vẽ nhân vật tại vị trí A
         if self.start_pos:
             i, j = self.start_pos
             cx = start_x + j * w
             cy = start_y + i * h
             self.avatar_id = self.canvas.create_image(cx, cy, anchor="nw", image=self.avt_img)
         
-        # --- Vẽ lối thoát tại vị trí B ---
+        # Vẽ lối thoát tại vị trí B
         if self.end_pos:
             i, j = self.end_pos
             cx = start_x + j * w
             cy = start_y + i * h
             self.end_id = self.canvas.create_image(cx, cy, anchor="nw", image=self.end_img)
         
-        # --- Vẽ kho báu tại vị trí t ---
+        # Vẽ kho báu tại vị trí t
         self.treasure_map = {}
         if self.treasure_pos:
             for i, j in self.treasure_pos:
@@ -656,7 +629,7 @@ class mazeObj:
                 self.treasure_id.append(tid)
                 self.treasure_map[(i, j)] = tid
             
-        # --- Vẽ khung viền quanh mê cung ---
+        # Vẽ khung viền quanh mê cung
         x1, y1 = start_x, start_y
         x2, y2 = start_x + cols * w, start_y + rows * h
         self.border_id = self.canvas.create_rectangle(
@@ -702,7 +675,7 @@ class mazeObj:
         self.canvas.image_refs = getattr(self.canvas, "image_refs", [])
         self.canvas.image_refs.append(self.search_img)
 
-        # --- Animation từng frame ---
+        # Animation
         def draw_step(index=0):
             if not self.animating:
                 return
@@ -723,7 +696,7 @@ class mazeObj:
                 # Đếm số lần đã tô để tăng alpha (đè màu)
                 visit_count[(i, j)] = visit_count.get((i, j), 0) + 1
                 times = visit_count[(i, j)]
-                extra_alpha = min(255, alpha + times * 40)  # quay đầu nhiều → đậm hơn
+                extra_alpha = min(255, alpha + times * 40)
                 fill_color = (*base_color, extra_alpha)
 
                 # Vẽ đè lên vị trí cũ
@@ -749,7 +722,6 @@ class mazeObj:
             self._after_id.append(after_id)
 
         draw_step(0)
-
 
     # Vẽ đường đi cuối cùng (có thể quay đầu)
     def draw_path(self, path_coords, sizeOfBlock=(40, 40),
@@ -996,7 +968,6 @@ class mazeObj:
         draw_step(0)
         
     def clearMaze(self):
-        """Xóa toàn bộ mê cung hiện tại khỏi canvas."""
         if not hasattr(self, "canvas"):
             return
 
@@ -1061,7 +1032,7 @@ class TimerObj:
         self.font = font
         self.color = color
 
-        # --- Tạo button nền ---
+        # Tạo button nền
         self.button_bg = ButtonObj(self.canvas)
         self.button_id, self.bg_text_id = self.button_bg.create_button(
             x, y, w=w, h=h, text="", 
@@ -1074,20 +1045,19 @@ class TimerObj:
             hasBorder=False
         )
 
-        # --- Tạo text thời gian chồng lên ---
+        # Tạo text thời gian chồng lên
         self.text_id = self.canvas.create_text(
             x, y,
             text=f"{prefix} 0.00 s",
             font=font, fill=color, anchor="center"
         )
 
-        # --- Bắt đầu đếm thời gian ---
+        # Bắt đầu đếm thời gian
         self.start_time = time.perf_counter()
         self.running = True
         self._update()
 
     def _update(self):
-        """Cập nhật text thời gian"""
         if not self.running:
             return
 
@@ -1100,7 +1070,6 @@ class TimerObj:
         self.after_id = self.canvas.after(100, self._update)
 
     def stop(self):
-        """Dừng timer"""
         if not self.running:
             return
         self.running = False
@@ -1109,7 +1078,6 @@ class TimerObj:
             self.after_id = None
 
     def reset(self):
-        """Reset timer về 0"""
         self.stop()
         if self.text_id:
             self.canvas.itemconfigure(self.text_id, text=f"{self.prefix} 0.00 s")
@@ -1128,26 +1096,26 @@ class AudioControl:
         self.size = size
         self.is_hover = False
 
-        # Khởi tạo âm thanh (chỉ 1 lần duy nhất)
+        # Khởi tạo âm thanh
         if not AudioControl._initialized:
             self.init_audio()
 
-        # --- Tải và resize hình ảnh ---
+        # Load và resize hình ảnh
         self.icon_on = self._load_image("Gallery/mute.png")
         self.icon_on_hover = self._load_image("Gallery/muteHover.png")
         self.icon_off = self._load_image("Gallery/unmute.png")
         self.icon_off_hover = self._load_image("Gallery/unmuteHover.png")
 
-        # --- Chọn icon ban đầu ---
+        # Icon ban đầu
         icon = self.icon_on if AudioControl._sound_on else self.icon_off
         self.button_id = canvas.create_image(x, y, image=icon, anchor="nw")
 
-        # --- Gắn sự kiện ---
+        # Gắn sự kiện
         canvas.tag_bind(self.button_id, "<Button-1>", self.toggle_sound)
         canvas.tag_bind(self.button_id, "<Enter>", self.on_hover)
         canvas.tag_bind(self.button_id, "<Leave>", self.on_leave)
 
-    # ---------------- ÂM THANH -----------------
+    # ÂM THANH
     @classmethod
     def init_audio(cls):
         if cls._initialized:
@@ -1179,7 +1147,7 @@ class AudioControl:
             cls._bg_channel.play(cls._bg_sound, loops=-1)
             cls._bg_channel.set_volume(0.5)
 
-    # ---------------- HÌNH ẢNH -----------------
+    # HÌNH ẢNH
     def _load_image(self, path):
         img = Image.open(path).resize(self.size, Image.LANCZOS)
         return ImageTk.PhotoImage(img)
