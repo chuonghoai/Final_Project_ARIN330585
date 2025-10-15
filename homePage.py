@@ -8,7 +8,7 @@ class homePage:
         self.root = root
         self.width = width
         self.height = height
-        root.title("Maze game")
+        root.title("Maze Chikawa Game")
         root.after(10, lambda: root.iconbitmap("Gallery/MAZE_LOGO.ico"))
         
         # Nạp font chữ
