@@ -1,5 +1,5 @@
 <div align="center">
-    <img src="./Gallery/LOGO.png" alt="Maze game" width="170">
+    <img src="https://github.com/user-attachments/assets/d6cc6a46-e289-4bf1-9bbd-5621ba81fb1c" alt="Maze game" width="170">
     <h1>Maze-Chikawa Game</h1>
     <p>Trò chơi nhặt kho báu trong mê cung bằng các thuật toán tìm kiếm AI</p>
 </div>
@@ -16,4 +16,7 @@
 
 # BÁO CÁO DỰ ÁN
 ## 1. Mục tiêu
-Dự án Maze-Chikawa Game nhằm mục tiêu xây dựng
+Dự án Maze-Chikawa Game nhằm mục tiêu xây dựng trò chơi nhặt kho báu và giải đố trong mê cung, tích hợp khả năng tìm kiếm đường đi thu thập kho báu và thành công đi đến điểm đích bằng các thuật toán tìm kiếm AI. Xây dựng giao diện trực quan hỗ trợ minh họa quá trình tìm lời giải của thuật toán.
+
+## 2. Nội dung
+### 2.1. Nhóm thuật toán tìm kiếm không có thông tin
